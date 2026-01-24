@@ -47,21 +47,21 @@ const EmergencyPage: React.FC = () => {
   // Calculate distances when location is available
   useEffect(() => {
     if (userLocation) {
-      // Get only facilities with emergency services, sorted by distance
-      const emergencyFacilities = getFacilitiesByDistance(
+      // Get ALL facilities sorted by distance (not just emergency ones for filters)
+      const allFacilitiesWithDistance = getFacilitiesByDistance(
         userLocation.lat,
         userLocation.lon,
-        allHealthFacilities.filter(f => f.hasEmergency)
+        allHealthFacilities
       );
       
-      setFacilities(emergencyFacilities);
+      setFacilities(allFacilitiesWithDistance);
       setLoading(false);
     }
   }, [userLocation]);
 
-  // Filter facilities by type
+  // Filter facilities by type - for 'all', prioritize emergency facilities
   const filteredFacilities = filterType === 'all' 
-    ? facilities 
+    ? facilities.filter(f => f.hasEmergency) // Show only emergency facilities by default
     : facilities.filter(f => f.type === filterType);
 
   const callEmergency = (number: string) => {
