@@ -26,6 +26,7 @@ const Header: React.FC<HeaderProps> = ({ menuOpen, setMenuOpen }) => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setSimpleMode(!simpleMode)}
+            data-testid="simple-mode-toggle"
             className={`p-2 rounded-full ${simpleMode ? 'bg-green-600 text-white' : darkMode ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'}`}
             title="Simple Mode"
           >
@@ -33,18 +34,21 @@ const Header: React.FC<HeaderProps> = ({ menuOpen, setMenuOpen }) => {
           </button>
           <button
             onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
+            data-testid="language-toggle"
             className={`p-2 rounded-full ${darkMode ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'}`}
           >
             <Globe size={20} />
           </button>
           <button
             onClick={toggleDarkMode}
+            data-testid="theme-toggle"
             className={`p-2 rounded-full ${darkMode ? 'bg-gray-800 text-yellow-400' : 'bg-gray-100 text-gray-700'}`}
           >
             {darkMode ? <Sun size={20} /> : <Moon size={20} />}
           </button>
           <button
             onClick={() => setMenuOpen(!menuOpen)}
+            data-testid="menu-toggle"
             className={`p-2 rounded-full ${darkMode ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'}`}
           >
             {menuOpen ? <X size={20} /> : <Menu size={20} />}
