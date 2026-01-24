@@ -104,45 +104,27 @@ const WelcomePage: React.FC = () => {
         {!user ? 
           ( 
             <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl shadow-xl p-5`}>
-              {!showLogin ? (
-                <>
-                  <div className="grid grid-cols-3 gap-3 mb-5">
-                    {features.map((f, i) => (
-                      <div key={i} className="text-center">
-                        <div className="w-11 h-11 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-2">
-                          <f.icon className="text-green-600" size={22} />
-                        </div>
-                        <p className={`text-xs font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>{f.title}</p>
-                        <p className={`text-[10px] ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{f.desc}</p>
-                      </div>
-                    ))}
+              <div className="grid grid-cols-3 gap-3 mb-5">
+                {features.map((f, i) => (
+                  <div key={i} className="text-center">
+                    <div className="w-11 h-11 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-2">
+                      <f.icon className="text-green-600" size={22} />
+                    </div>
+                    <p className={`text-xs font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>{f.title}</p>
+                    <p className={`text-[10px] ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{f.desc}</p>
                   </div>
-                  <button onClick={() => navigate("/login")} className="w-full bg-green-600 text-white py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-green-700 transition">
-                    {t('login')} / {t('register')} <ArrowRight size={18} />
-                  </button>
-                  <p className={`text-center text-xs mt-3 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {language === 'fr' ? 'Soins modernes pour les Camerounais' : 'Modern care for Cameroonians'}
-                  </p>
-                </>
-              ) : (
-                <form onSubmit={handleAuth} className="space-y-3">
-                  <h2 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                    {isRegister ? t('register') : t('login')}
-                  </h2>
-                  {isRegister && (
-                    <input type="text" placeholder={language === 'fr' ? 'Nom complet' : 'Full Name'} value={name} onChange={(e) => setName(e.target.value)} className={`w-full p-3 border rounded-lg ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`} required />
-                  )}
-                  <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className={`w-full p-3 border rounded-lg ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`} required />
-                  <input type="password" placeholder={language === 'fr' ? 'Mot de passe' : 'Password'} value={password} onChange={(e) => setPassword(e.target.value)} className={`w-full p-3 border rounded-lg ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`} required />
-                  <button type="submit" className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold">{isRegister ? t('register') : t('login')}</button>
-                  <button type="button" onClick={() => setIsRegister(!isRegister)} className="w-full text-green-600 text-sm">
-                    {isRegister ? (language === 'fr' ? 'Déjà inscrit? Connexion' : 'Already have account? Login') : (language === 'fr' ? 'Nouveau? S\'inscrire' : 'New user? Register')}
-                  </button>
-                  <button type="button" onClick={() => setShowLogin(false)} className={`w-full text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {language === 'fr' ? 'Retour' : 'Back'}
-                  </button>
-                </form>
-              )}
+                ))}
+              </div>
+              <button 
+                onClick={() => navigate("/login")} 
+                data-testid="login-register-btn"
+                className="w-full bg-green-600 text-white py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-green-700 transition"
+              >
+                {t('login')} / {t('register')} <ArrowRight size={18} />
+              </button>
+              <p className={`text-center text-xs mt-3 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                {language === 'fr' ? 'Soins modernes pour les Camerounais' : 'Modern care for Cameroonians'}
+              </p>
             </div>
            ) : (
               <div
