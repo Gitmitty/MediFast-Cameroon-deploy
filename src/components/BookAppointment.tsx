@@ -253,7 +253,13 @@ const BookAppointment: React.FC = () => {
 
           <div className="flex gap-3 mt-6">
             <button 
-              onClick={() => navigate('/payment')}
+              onClick={() => navigate('/payment', { 
+                state: { 
+                  amount: appointmentDetails.fee,
+                  bookingId: appointmentDetails.id,
+                  bookingData: appointmentDetails 
+                }
+              })}
               data-testid="pay-now-btn"
               className="flex-1 bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition"
             >
