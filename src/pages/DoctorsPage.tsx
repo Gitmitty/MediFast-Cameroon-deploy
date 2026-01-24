@@ -90,7 +90,8 @@ const specialties = [
 ];
 
 const DoctorsPage: React.FC = () => {
-  const { darkMode, language, setCurrentPage } = useApp();
+  const { darkMode, language } = useApp();
+  const navigate = useNavigate();
   const [selectedSpecialty, setSelectedSpecialty] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
