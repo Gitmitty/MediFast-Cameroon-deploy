@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
-import { Phone, AlertTriangle, Home, Ambulance, MapPin, Clock, Headphones, Navigation, Stethoscope, Loader2 } from 'lucide-react';
+import { Phone, AlertTriangle, Home, Ambulance, MapPin, Clock, Headphones, Navigation, Stethoscope, Loader2, Filter } from 'lucide-react';
+import { allHealthFacilities, getFacilitiesByDistance, facilityTypeLabels, type HealthFacility } from '../data/healthFacilities';
 
 // Complete hospital data with real coordinates and departments
 const hospitalData = [
