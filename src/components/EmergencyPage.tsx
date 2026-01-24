@@ -155,9 +155,31 @@ const EmergencyPage: React.FC = () => {
         </div>
       ) : (
         <>
+          {/* Filter Buttons */}
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+            {(['all', 'hospital', 'clinic', 'health_center'] as const).map(type => (
+              <button
+                key={type}
+                onClick={() => setFilterType(type)}
+                data-testid={`filter-${type}`}
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition ${
+                  filterType === type 
+                    ? 'bg-red-600 text-white' 
+                    : darkMode ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-700 hover:bg-gray-100'
+                } shadow-md`}
+              >
+                {type === 'all' ? (language === 'fr' ? 'Tous' : 'All') :
+                 facilityTypeLabels[type][language === 'fr' ? 'fr' : 'en']}
+              </button>
+            ))}
+          </div>
+
           <div className="flex items-center justify-between mb-4">
             <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              {language === 'fr' ? 'Hôpitaux d\'Urgence les Plus Proches' : 'Nearest Emergency Hospitals'}
+              {language === 'fr' ? 'Établissements d\'Urgence' : 'Emergency Facilities'}
+              <span className={`ml-2 text-sm font-normal ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                ({filteredFacilities.length})
+              </span>
             </h3>
             <span className={`text-xs px-2 py-1 rounded-full ${darkMode ? 'bg-green-900 text-green-300' : 'bg-green-100 text-green-700'}`}>
               {language === 'fr' ? 'Triés par distance' : 'Sorted by distance'}
@@ -165,34 +187,44 @@ const EmergencyPage: React.FC = () => {
           </div>
 
           <div className="space-y-3 mb-6">
-            {hospitals.map((hospital, i) => (
+            {filteredFacilities.slice(0, 15).map((facility, i) => (
               <div 
-                key={hospital.id} 
+                key={facility.id} 
                 className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl p-4 shadow-md ${i === 0 ? 'ring-2 ring-yellow-500' : ''}`}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h4 className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                        {hospital.name}
+                        {facility.name}
                       </h4>
-                      {i === 0 && <span className="text-yellow-500 text-sm">⭐ Plus proche</span>}
+                      {i === 0 && <span className="text-yellow-500 text-sm">⭐</span>}
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        facility.type === 'hospital' ? 'bg-red-100 text-red-700' :
+                        facility.type === 'clinic' ? 'bg-blue-100 text-blue-700' :
+                        'bg-green-100 text-green-700'
+                      }`}>
+                        {facilityTypeLabels[facility.type][language === 'fr' ? 'fr' : 'en']}
+                      </span>
                     </div>
-                    <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>{hospital.city}</p>
+                    <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                      {facility.district ? `${facility.district}, ` : ''}{facility.city}
+                    </p>
                     <div className="flex items-center gap-3 mt-2 text-sm">
                       <span className={`flex items-center gap-1 font-medium ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
-                        <MapPin size={14} /> {hospital.distance.toFixed(1)} km
+                        <MapPin size={14} /> {facility.distance.toFixed(1)} km
                       </span>
                       <span className={`flex items-center gap-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        <Clock size={14} /> ~{hospital.drivingTime} min
+                        <Clock size={14} /> ~{facility.drivingTime} min
                       </span>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => callEmergency(hospital.emergencyPhone || hospital.phone)}
-                    data-testid={`call-hospital-${i}-btn`}
-                    className="bg-red-100 text-red-600 p-3 rounded-full hover:bg-red-200 transition-colors"
-                  >
+                  {facility.phone && (
+                    <button 
+                      onClick={() => callEmergency(facility.emergencyPhone || facility.phone!)}
+                      data-testid={`call-facility-${i}-btn`}
+                      className="bg-red-100 text-red-600 p-3 rounded-full hover:bg-red-200 transition-colors"
+                    >
                     <Phone size={20} />
                   </button>
                 </div>
