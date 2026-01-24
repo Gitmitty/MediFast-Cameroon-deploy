@@ -9,12 +9,7 @@ import { ArrowRight, Shield, Clock, MapPin, Heart, Stethoscope, UserCheck, Calen
 
 const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { darkMode, t, setCurrentPage, setUser, language, user } = useApp();
-  const [showLogin, setShowLogin] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [isRegister, setIsRegister] = useState(false);
+  const { darkMode, t, setUser, language, user } = useApp();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const features = [
