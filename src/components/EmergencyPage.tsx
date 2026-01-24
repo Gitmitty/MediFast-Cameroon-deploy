@@ -47,29 +47,22 @@ const EmergencyPage: React.FC = () => {
   // Calculate distances when location is available
   useEffect(() => {
     if (userLocation) {
-      const hospitalsWithDistance = hospitalData
-        .filter(h => h.hasEmergency) // Only emergency hospitals
-        .map(hospital => {
-          const distance = calculateDistance(
-            userLocation.lat, 
-            userLocation.lon, 
-            hospital.lat, 
-            hospital.lon
-          );
-          const drivingTime = estimateDrivingTime(distance);
-          
-          return {
-            ...hospital,
-            distance,
-            drivingTime
-          };
-        })
-        .sort((a, b) => a.distance - b.distance); // Sort by nearest
+      // Get only facilities with emergency services, sorted by distance
+      const emergencyFacilities = getFacilitiesByDistance(
+        userLocation.lat,
+        userLocation.lon,
+        allHealthFacilities.filter(f => f.hasEmergency)
+      );
       
-      setHospitals(hospitalsWithDistance);
+      setFacilities(emergencyFacilities);
       setLoading(false);
     }
   }, [userLocation]);
+
+  // Filter facilities by type
+  const filteredFacilities = filterType === 'all' 
+    ? facilities 
+    : facilities.filter(f => f.type === filterType);
 
   const callEmergency = (number: string) => {
     window.location.href = `tel:${number}`;
