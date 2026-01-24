@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
-import { Calendar, Clock, User, Check, Users, ChevronLeft, Building2, Zap, AlertCircle, Loader2 } from 'lucide-react';
+import { Calendar, Clock, User, Check, Users, ChevronLeft, Building2, Zap, AlertCircle, Loader2, Home, Info } from 'lucide-react';
 import { createBooking, getBookedSlots } from '../services/bookingService';
 import { useToast } from '../hooks/use-toast';
+import { PRICING, calculateSurcharges, formatPrice, priceLabels, getConsultationPrice } from '../config/pricing';
 
 interface Doctor {
   id: string;
   name: string;
   specialty: string;
+  consultationType: 'general' | 'specialist' | 'professor';
   consultationDays: string[];
-  fee: number;
   image: string;
 }
 
@@ -22,28 +23,29 @@ const hospitals = [
   { id: 'laquintinie', name: 'Hôpital Laquintinie Douala', city: 'Douala', address: 'Douala, Cameroon', phone: '+237 233 42 45 67' },
 ];
 
+// Doctors with consultation types based on centralized pricing
 const doctorsByHospital: Record<string, Doctor[]> = {
   'jamot': [
-    { id: 'pefura', name: 'Prof. Pefura Yone Eric Walter', specialty: 'Pneumologie', consultationDays: ['Tuesday', 'Thursday'], fee: 15000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206177040_fc6db82d.png' },
-    { id: 'poka', name: 'Dr. Poka Mayap Virginie', specialty: 'Pneumologie', consultationDays: ['Monday', 'Tuesday', 'Thursday'], fee: 7000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206163628_c88b7726.jpg' },
-    { id: 'ekoua', name: 'Dr. Daniel Ekoua', specialty: 'Cardiologie', consultationDays: ['Monday', 'Thursday'], fee: 7000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206169084_63a4d34d.png' },
-    { id: 'tchokonte', name: 'Dr. Tchokonté Nana', specialty: 'Neurologie', consultationDays: ['Monday', 'Wednesday', 'Friday'], fee: 7000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206178236_5d3922a1.png' },
+    { id: 'pefura', name: 'Prof. Pefura Yone Eric Walter', specialty: 'Pneumologie', consultationType: 'professor', consultationDays: ['Tuesday', 'Thursday'], image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206177040_fc6db82d.png' },
+    { id: 'poka', name: 'Dr. Poka Mayap Virginie', specialty: 'Pneumologie', consultationType: 'specialist', consultationDays: ['Monday', 'Tuesday', 'Thursday'], image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206163628_c88b7726.jpg' },
+    { id: 'ekoua', name: 'Dr. Daniel Ekoua', specialty: 'Cardiologie', consultationType: 'specialist', consultationDays: ['Monday', 'Thursday'], image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206169084_63a4d34d.png' },
+    { id: 'tchokonte', name: 'Dr. Tchokonté Nana', specialty: 'Neurologie', consultationType: 'specialist', consultationDays: ['Monday', 'Wednesday', 'Friday'], image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206178236_5d3922a1.png' },
   ],
   'central': [
-    { id: 'general-central', name: 'Dr. Médecin Généraliste', specialty: 'Médecine Générale', consultationDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], fee: 5000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206177040_fc6db82d.png' },
-    { id: 'specialist-central', name: 'Dr. Spécialiste', specialty: 'Chirurgie', consultationDays: ['Tuesday', 'Thursday'], fee: 7000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206163628_c88b7726.jpg' },
+    { id: 'general-central', name: 'Dr. Médecin Généraliste', specialty: 'Médecine Générale', consultationType: 'general', consultationDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206177040_fc6db82d.png' },
+    { id: 'specialist-central', name: 'Dr. Chirurgien', specialty: 'Chirurgie', consultationType: 'specialist', consultationDays: ['Tuesday', 'Thursday'], image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206163628_c88b7726.jpg' },
   ],
   'general-yaounde': [
-    { id: 'general-gy', name: 'Dr. Médecin Généraliste', specialty: 'Médecine Générale', consultationDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], fee: 5000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206163628_c88b7726.jpg' },
-    { id: 'neuro-gy', name: 'Dr. Neurologue', specialty: 'Neurologie', consultationDays: ['Monday', 'Wednesday'], fee: 7000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206169084_63a4d34d.png' },
+    { id: 'general-gy', name: 'Dr. Médecin Généraliste', specialty: 'Médecine Générale', consultationType: 'general', consultationDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206163628_c88b7726.jpg' },
+    { id: 'neuro-gy', name: 'Dr. Neurologue', specialty: 'Neurologie', consultationType: 'specialist', consultationDays: ['Monday', 'Wednesday'], image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206169084_63a4d34d.png' },
   ],
   'general-douala': [
-    { id: 'general-gd', name: 'Dr. Médecin Généraliste', specialty: 'Médecine Générale', consultationDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], fee: 5000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206169084_63a4d34d.png' },
-    { id: 'cardio-gd', name: 'Dr. Cardiologue', specialty: 'Cardiologie', consultationDays: ['Tuesday', 'Friday'], fee: 7000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206178236_5d3922a1.png' },
+    { id: 'general-gd', name: 'Dr. Médecin Généraliste', specialty: 'Médecine Générale', consultationType: 'general', consultationDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206169084_63a4d34d.png' },
+    { id: 'cardio-gd', name: 'Dr. Cardiologue', specialty: 'Cardiologie', consultationType: 'specialist', consultationDays: ['Tuesday', 'Friday'], image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206178236_5d3922a1.png' },
   ],
   'laquintinie': [
-    { id: 'general-laq', name: 'Dr. Médecin Généraliste', specialty: 'Médecine Générale', consultationDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], fee: 5000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206178236_5d3922a1.png' },
-    { id: 'pediatre-laq', name: 'Dr. Pédiatre', specialty: 'Pédiatrie', consultationDays: ['Monday', 'Wednesday', 'Friday'], fee: 7000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206163628_c88b7726.jpg' },
+    { id: 'general-laq', name: 'Dr. Médecin Généraliste', specialty: 'Médecine Générale', consultationType: 'general', consultationDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206178236_5d3922a1.png' },
+    { id: 'pediatre-laq', name: 'Dr. Pédiatre', specialty: 'Pédiatrie', consultationType: 'specialist', consultationDays: ['Monday', 'Wednesday', 'Friday'], image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206163628_c88b7726.jpg' },
   ],
 };
 
@@ -54,12 +56,88 @@ const dayNames: Record<string, string> = {
   'Thursday': 'Jeudi', 'Friday': 'Vendredi', 'Saturday': 'Samedi', 'Sunday': 'Dimanche',
 };
 
+// Price breakdown component
+const PriceBreakdown: React.FC<{
+  basePrice: number;
+  baseLabel: string;
+  homeVisit: boolean;
+  expressCare: boolean;
+  nightSurcharge: number;
+  holidaySurcharge: number;
+  darkMode: boolean;
+  language: string;
+}> = ({ basePrice, baseLabel, homeVisit, expressCare, nightSurcharge, holidaySurcharge, darkMode, language }) => {
+  const labels = priceLabels[language === 'fr' ? 'fr' : 'en'];
+  const homeVisitFee = homeVisit ? PRICING.homeVisit : 0;
+  const expressCareFee = expressCare ? PRICING.surcharges.expressCare : 0;
+  const total = basePrice + homeVisitFee + expressCareFee + nightSurcharge + holidaySurcharge;
+
+  return (
+    <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-xl p-4 space-y-2`}>
+      <div className="flex items-center gap-2 mb-2">
+        <Info size={16} className="text-green-600" />
+        <span className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+          {language === 'fr' ? 'Détail du prix' : 'Price Breakdown'}
+        </span>
+      </div>
+      
+      {/* Base consultation */}
+      <div className="flex justify-between text-sm">
+        <span className={darkMode ? 'text-gray-300' : 'text-gray-600'}>{baseLabel}</span>
+        <span className={darkMode ? 'text-white' : 'text-gray-800'}>{formatPrice(basePrice)} FCFA</span>
+      </div>
+      
+      {/* Home visit */}
+      {homeVisit && (
+        <div className="flex justify-between text-sm">
+          <span className={darkMode ? 'text-gray-300' : 'text-gray-600'}>{labels.homeVisit}</span>
+          <span className={darkMode ? 'text-white' : 'text-gray-800'}>+{formatPrice(PRICING.homeVisit)} FCFA</span>
+        </div>
+      )}
+      
+      {/* ExpressCare */}
+      {expressCare && (
+        <div className="flex justify-between text-sm">
+          <span className={darkMode ? 'text-gray-300' : 'text-gray-600'}>{labels.expressCare}</span>
+          <span className={darkMode ? 'text-white' : 'text-gray-800'}>+{formatPrice(PRICING.surcharges.expressCare)} FCFA</span>
+        </div>
+      )}
+      
+      {/* Night surcharge */}
+      {nightSurcharge > 0 && (
+        <div className="flex justify-between text-sm">
+          <span className="text-orange-500">{labels.nightSurcharge}</span>
+          <span className="text-orange-500">+{formatPrice(nightSurcharge)} FCFA</span>
+        </div>
+      )}
+      
+      {/* Holiday surcharge */}
+      {holidaySurcharge > 0 && (
+        <div className="flex justify-between text-sm">
+          <span className="text-orange-500">{labels.holidaySurcharge}</span>
+          <span className="text-orange-500">+{formatPrice(holidaySurcharge)} FCFA</span>
+        </div>
+      )}
+      
+      {/* Divider */}
+      <div className={`border-t ${darkMode ? 'border-gray-600' : 'border-gray-200'} pt-2 mt-2`}>
+        <div className="flex justify-between font-semibold">
+          <span className={darkMode ? 'text-white' : 'text-gray-800'}>{labels.total}</span>
+          <span className="text-green-600 text-lg">{formatPrice(total)} FCFA</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const BookAppointment: React.FC = () => {
   const { darkMode, language, user } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   
   const [step, setStep] = useState(1);
+  const [consultationType, setConsultationType] = useState<'hospital' | 'home'>('hospital');
   const [selectedHospital, setSelectedHospital] = useState<typeof hospitals[0] | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDate] = useState('');
@@ -74,7 +152,40 @@ const BookAppointment: React.FC = () => {
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [appointmentDetails, setAppointmentDetails] = useState<any>(null);
 
-  const totalSteps = bookingFor === 'other' ? 5 : 4;
+  // Calculate surcharges based on selected date/time
+  const surcharges = useMemo(() => {
+    if (selectedDate && selectedTime) {
+      return calculateSurcharges(selectedDate, selectedTime);
+    }
+    return { night: false, holiday: false, weekend: false, total: 0 };
+  }, [selectedDate, selectedTime]);
+
+  // Calculate total price
+  const priceDetails = useMemo(() => {
+    if (!selectedDoctor) return null;
+    
+    const basePrice = PRICING.consultation[selectedDoctor.consultationType];
+    const homeVisitFee = consultationType === 'home' ? PRICING.homeVisit : 0;
+    const expressCareFee = expressCare ? PRICING.surcharges.expressCare : 0;
+    const nightFee = surcharges.night ? PRICING.surcharges.night : 0;
+    const holidayFee = surcharges.holiday ? PRICING.surcharges.holiday : 0;
+    
+    return {
+      basePrice,
+      baseLabel: selectedDoctor.consultationType === 'general' 
+        ? (language === 'fr' ? 'Consultation Générale' : 'General Consultation')
+        : selectedDoctor.consultationType === 'specialist'
+          ? (language === 'fr' ? 'Consultation Spécialiste' : 'Specialist Consultation')
+          : (language === 'fr' ? 'Consultation Professeur' : 'Professor Consultation'),
+      homeVisitFee,
+      expressCareFee,
+      nightFee,
+      holidayFee,
+      total: basePrice + homeVisitFee + expressCareFee + nightFee + holidayFee
+    };
+  }, [selectedDoctor, consultationType, expressCare, surcharges, language]);
+
+  const totalSteps = consultationType === 'home' || bookingFor === 'other' ? 5 : 4;
 
   // Load booked slots when date changes
   useEffect(() => {
@@ -92,7 +203,7 @@ const BookAppointment: React.FC = () => {
   }, [selectedHospital, selectedDoctor, selectedDate]);
 
   const handleBook = async () => {
-    if (!user || !selectedHospital || !selectedDoctor) {
+    if (!user || !selectedHospital || !selectedDoctor || !priceDetails) {
       toast({
         title: language === 'fr' ? 'Erreur' : 'Error',
         description: language === 'fr' ? 'Veuillez vous connecter' : 'Please log in first',
@@ -104,8 +215,6 @@ const BookAppointment: React.FC = () => {
     setLoading(true);
     
     try {
-      const totalFee = (selectedDoctor?.fee || 0) + (expressCare ? 5000 : 0);
-      
       const bookingId = await createBooking({
         userId: user.id,
         userEmail: user.email,
@@ -118,9 +227,9 @@ const BookAppointment: React.FC = () => {
         specialty: selectedDoctor.specialty,
         date: selectedDate,
         time: selectedTime,
-        status: 'confirmed',
-        queueNumber: 0, // Will be set by service
-        fee: totalFee,
+        status: 'pending',
+        queueNumber: 0,
+        fee: priceDetails.total,
         expressCare,
         patientName: bookingFor === 'other' ? patientName : (user.fullName || 'Vous'),
         patientRelation: bookingFor === 'other' ? patientRelation : undefined,
@@ -132,27 +241,29 @@ const BookAppointment: React.FC = () => {
         hospital: selectedHospital.name,
         doctor: selectedDoctor.name,
         specialty: selectedDoctor.specialty,
+        consultationType: selectedDoctor.consultationType,
         date: selectedDate,
         time: selectedTime,
-        patientName: bookingFor === 'other' ? patientName : 'Vous',
+        patientName: bookingFor === 'other' ? patientName : (language === 'fr' ? 'Vous' : 'You'),
         patientRelation: bookingFor === 'other' ? patientRelation : null,
-        fee: totalFee,
+        isHomeVisit: consultationType === 'home',
         expressCare,
-        queueNumber: Math.floor(Math.random() * 10) + 1, // Display purpose
+        priceBreakdown: priceDetails,
+        queueNumber: Math.floor(Math.random() * 10) + 1,
       };
       
       setAppointmentDetails(details);
       setBooked(true);
       
       toast({
-        title: language === 'fr' ? 'Succès!' : 'Success!',
-        description: language === 'fr' ? 'Votre rendez-vous a été confirmé' : 'Your appointment has been confirmed',
+        title: language === 'fr' ? 'Réservation créée!' : 'Booking created!',
+        description: language === 'fr' ? 'Procédez au paiement pour confirmer' : 'Proceed to payment to confirm',
       });
     } catch (error: any) {
       if (error.message === 'SLOT_NOT_AVAILABLE') {
         toast({
           title: language === 'fr' ? 'Créneau indisponible' : 'Slot unavailable',
-          description: language === 'fr' ? 'Ce créneau est déjà réservé. Choisissez un autre horaire.' : 'This slot is already booked. Please choose another time.',
+          description: language === 'fr' ? 'Ce créneau est déjà réservé.' : 'This slot is already booked.',
           variant: 'destructive'
         });
       } else {
@@ -193,23 +304,30 @@ const BookAppointment: React.FC = () => {
 
   const isTimeSlotBooked = (time: string) => bookedSlots.includes(time);
 
+  const getDoctorPrice = (doctor: Doctor) => PRICING.consultation[doctor.consultationType];
+
+  // Booking confirmation screen
   if (booked && appointmentDetails) {
+    const pb = appointmentDetails.priceBreakdown;
+    
     return (
-      <div className={`min-h-screen pt-20 pb-24 px-4 flex items-center justify-center ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-        <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-6 w-full max-w-md shadow-xl`}>
+      <div className={`min-h-screen pt-20 pb-24 px-4 ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+        <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-6 shadow-xl max-w-md mx-auto`}>
+          {/* Success Header */}
           <div className="text-center mb-6">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="text-green-600" size={40} />
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="text-yellow-600" size={32} />
             </div>
-            <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              {language === 'fr' ? 'Rendez-vous Confirmé!' : 'Appointment Confirmed!'}
+            <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+              {language === 'fr' ? 'Réservation en attente' : 'Booking Pending'}
             </h2>
-            <p className={`mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fr' ? 'Vous recevrez un SMS/Email de rappel' : 'You will receive an SMS/Email reminder'}
+            <p className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              {language === 'fr' ? 'Payez pour confirmer votre rendez-vous' : 'Pay to confirm your appointment'}
             </p>
           </div>
 
-          <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-xl p-4 space-y-3 text-sm`}>
+          {/* Appointment Details */}
+          <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-xl p-4 mb-4 space-y-2 text-sm`}>
             <div className="flex justify-between">
               <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>{language === 'fr' ? 'Hôpital' : 'Hospital'}</span>
               <span className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>{appointmentDetails.hospital}</span>
@@ -226,50 +344,89 @@ const BookAppointment: React.FC = () => {
               <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>{language === 'fr' ? 'Heure' : 'Time'}</span>
               <span className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>{appointmentDetails.time}</span>
             </div>
-            {bookingFor === 'other' && (
-              <div className="flex justify-between">
-                <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Patient</span>
-                <span className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>{appointmentDetails.patientName}</span>
-              </div>
-            )}
             <div className="flex justify-between">
-              <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>{language === 'fr' ? 'File d\'attente' : 'Queue Number'}</span>
+              <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>{language === 'fr' ? 'File d\'attente' : 'Queue'}</span>
               <span className="font-bold text-green-600">#{appointmentDetails.queueNumber}</span>
             </div>
-            <div className={`pt-3 border-t ${darkMode ? 'border-gray-600' : 'border-gray-200'} flex justify-between`}>
-              <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Total</span>
-              <span className="font-bold text-green-600">{appointmentDetails.fee.toLocaleString()} FCFA</span>
+          </div>
+
+          {/* Price Breakdown - CLEAR AND TRANSPARENT */}
+          <div className={`${darkMode ? 'bg-green-900/30' : 'bg-green-50'} border ${darkMode ? 'border-green-800' : 'border-green-200'} rounded-xl p-4 mb-4`}>
+            <h3 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+              {language === 'fr' ? '💰 Détail du Tarif' : '💰 Price Details'}
+            </h3>
+            <div className="space-y-2 text-sm">
+              {/* Base consultation */}
+              <div className="flex justify-between">
+                <span className={darkMode ? 'text-gray-300' : 'text-gray-600'}>{pb.baseLabel}</span>
+                <span className={darkMode ? 'text-white' : 'text-gray-800'}>{formatPrice(pb.basePrice)} FCFA</span>
+              </div>
+              
+              {/* Home visit */}
+              {appointmentDetails.isHomeVisit && (
+                <div className="flex justify-between">
+                  <span className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
+                    {language === 'fr' ? '🏠 Visite à Domicile' : '🏠 Home Visit'}
+                  </span>
+                  <span className={darkMode ? 'text-white' : 'text-gray-800'}>+{formatPrice(pb.homeVisitFee)} FCFA</span>
+                </div>
+              )}
+              
+              {/* ExpressCare */}
+              {appointmentDetails.expressCare && (
+                <div className="flex justify-between">
+                  <span className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
+                    {language === 'fr' ? '⚡ ExpressCare (Priorité)' : '⚡ ExpressCare (Priority)'}
+                  </span>
+                  <span className={darkMode ? 'text-white' : 'text-gray-800'}>+{formatPrice(pb.expressCareFee)} FCFA</span>
+                </div>
+              )}
+              
+              {/* Night surcharge */}
+              {pb.nightFee > 0 && (
+                <div className="flex justify-between text-orange-500">
+                  <span>{language === 'fr' ? '🌙 Supplément Nuit' : '🌙 Night Surcharge'}</span>
+                  <span>+{formatPrice(pb.nightFee)} FCFA</span>
+                </div>
+              )}
+              
+              {/* Holiday surcharge */}
+              {pb.holidayFee > 0 && (
+                <div className="flex justify-between text-orange-500">
+                  <span>{language === 'fr' ? '🎉 Supplément Jour Férié' : '🎉 Holiday Surcharge'}</span>
+                  <span>+{formatPrice(pb.holidayFee)} FCFA</span>
+                </div>
+              )}
+              
+              {/* Total */}
+              <div className={`border-t ${darkMode ? 'border-green-800' : 'border-green-200'} pt-3 mt-3`}>
+                <div className="flex justify-between items-center">
+                  <span className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-800'}`}>TOTAL</span>
+                  <span className="font-bold text-2xl text-green-600">{formatPrice(pb.total)} FCFA</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className={`mt-4 p-3 rounded-xl ${darkMode ? 'bg-yellow-900/30' : 'bg-yellow-50'} flex items-start gap-2`}>
-            <AlertCircle className="text-yellow-600 flex-shrink-0 mt-0.5" size={16} />
-            <p className={`text-xs ${darkMode ? 'text-yellow-200' : 'text-yellow-800'}`}>
-              {language === 'fr' 
-                ? 'Annulation gratuite jusqu\'à 24h avant le rendez-vous.' 
-                : 'Free cancellation up to 24h before the appointment.'}
-            </p>
-          </div>
-
-          <div className="flex gap-3 mt-6">
-            <button 
-              onClick={() => navigate('/payment', { 
-                state: { 
-                  amount: appointmentDetails.fee,
-                  bookingId: appointmentDetails.id,
-                  bookingData: appointmentDetails 
-                }
-              })}
-              data-testid="pay-now-btn"
-              className="flex-1 bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition"
-            >
-              {language === 'fr' ? 'Payer Maintenant' : 'Pay Now'}
-            </button>
-          </div>
+          {/* Payment Buttons */}
+          <button 
+            onClick={() => navigate('/payment', { 
+              state: { 
+                amount: pb.total,
+                bookingId: appointmentDetails.id,
+                bookingData: appointmentDetails 
+              }
+            })}
+            data-testid="pay-now-btn"
+            className="w-full bg-green-600 text-white py-4 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-green-700 transition mb-3"
+          >
+            {language === 'fr' ? '💳 Payer Maintenant' : '💳 Pay Now'} ({formatPrice(pb.total)} FCFA)
+          </button>
+          
           <button 
             onClick={() => navigate('/appointments')}
             data-testid="view-appointments-btn"
-            className={`w-full mt-3 py-3 rounded-xl font-semibold ${darkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'} transition`}
+            className={`w-full py-3 rounded-xl font-medium ${darkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'} transition`}
           >
             {language === 'fr' ? 'Voir Mes Rendez-vous' : 'View My Appointments'}
           </button>
@@ -279,7 +436,7 @@ const BookAppointment: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen pt-20 pb-24 px-4 ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <div className={`min-h-screen pt-20 pb-24 px-4 ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`} data-testid="book-appointment-page">
       {/* Progress Bar */}
       <div className="flex items-center gap-2 mb-6">
         {Array.from({ length: totalSteps }).map((_, i) => (
@@ -298,15 +455,89 @@ const BookAppointment: React.FC = () => {
         </button>
       )}
 
-      {/* Step 1: Who is this for? */}
+      {/* Step 1: Consultation Type */}
       {step === 1 && (
+        <>
+          <h2 className={`text-xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+            {language === 'fr' ? 'Type de consultation' : 'Consultation Type'}
+          </h2>
+          
+          {/* Pricing Info Card */}
+          <div className={`${darkMode ? 'bg-green-900/30' : 'bg-green-50'} border ${darkMode ? 'border-green-800' : 'border-green-200'} rounded-xl p-4 mb-4`}>
+            <h3 className={`font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+              {language === 'fr' ? '💰 Nos Tarifs' : '💰 Our Prices'}
+            </h3>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                {language === 'fr' ? 'Généraliste:' : 'General:'} <strong>{formatPrice(PRICING.consultation.general)} FCFA</strong>
+              </div>
+              <div className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                {language === 'fr' ? 'Spécialiste:' : 'Specialist:'} <strong>{formatPrice(PRICING.consultation.specialist)} FCFA</strong>
+              </div>
+              <div className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                {language === 'fr' ? 'Professeur:' : 'Professor:'} <strong>{formatPrice(PRICING.consultation.professor)} FCFA</strong>
+              </div>
+              <div className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                {language === 'fr' ? 'Visite domicile:' : 'Home visit:'} <strong>+{formatPrice(PRICING.homeVisit)} FCFA</strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <button 
+              onClick={() => { setConsultationType('hospital'); setStep(2); }}
+              data-testid="hospital-consultation-btn"
+              className={`w-full p-4 rounded-xl flex items-center gap-4 ${darkMode ? 'bg-gray-800 hover:bg-gray-750' : 'bg-white hover:bg-gray-50'} shadow-md transition`}
+            >
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <Building2 className="text-green-600" size={24} />
+              </div>
+              <div className="text-left flex-1">
+                <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                  {language === 'fr' ? 'Consultation à l\'hôpital' : 'Hospital Consultation'}
+                </p>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {language === 'fr' ? 'Se rendre dans un établissement' : 'Visit a health facility'}
+                </p>
+              </div>
+              <span className="text-green-600 font-semibold text-sm">
+                {language === 'fr' ? 'Dès' : 'From'} {formatPrice(PRICING.consultation.general)}
+              </span>
+            </button>
+            
+            <button 
+              onClick={() => { setConsultationType('home'); setStep(2); }}
+              data-testid="home-consultation-btn"
+              className={`w-full p-4 rounded-xl flex items-center gap-4 ${darkMode ? 'bg-gray-800 hover:bg-gray-750' : 'bg-white hover:bg-gray-50'} shadow-md transition`}
+            >
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <Home className="text-blue-600" size={24} />
+              </div>
+              <div className="text-left flex-1">
+                <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                  {language === 'fr' ? 'Visite à domicile' : 'Home Visit'}
+                </p>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {language === 'fr' ? 'Le médecin vient chez vous' : 'Doctor comes to you'}
+                </p>
+              </div>
+              <span className="text-blue-600 font-semibold text-sm">
+                +{formatPrice(PRICING.homeVisit)} FCFA
+              </span>
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Step 2: Who is this for? */}
+      {step === 2 && (
         <>
           <h2 className={`text-xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
             {language === 'fr' ? 'Pour qui est ce rendez-vous?' : 'Who is this appointment for?'}
           </h2>
           <div className="space-y-3">
             <button 
-              onClick={() => { setBookingFor('self'); setStep(2); }}
+              onClick={() => { setBookingFor('self'); setStep(3); }}
               data-testid="booking-for-self-btn"
               className={`w-full p-4 rounded-xl flex items-center gap-4 ${darkMode ? 'bg-gray-800 hover:bg-gray-750' : 'bg-white hover:bg-gray-50'} shadow-md transition`}
             >
@@ -317,13 +548,10 @@ const BookAppointment: React.FC = () => {
                 <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
                   {language === 'fr' ? 'Pour moi-même' : 'For myself'}
                 </p>
-                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {language === 'fr' ? 'Je prends rendez-vous pour moi' : 'I am booking for myself'}
-                </p>
               </div>
             </button>
             <button 
-              onClick={() => { setBookingFor('other'); setStep(2); }}
+              onClick={() => { setBookingFor('other'); setStep(3); }}
               data-testid="booking-for-other-btn"
               className={`w-full p-4 rounded-xl flex items-center gap-4 ${darkMode ? 'bg-gray-800 hover:bg-gray-750' : 'bg-white hover:bg-gray-50'} shadow-md transition`}
             >
@@ -343,62 +571,46 @@ const BookAppointment: React.FC = () => {
         </>
       )}
 
-      {/* Step 2: Patient Info (if booking for someone else) */}
-      {step === 2 && bookingFor === 'other' && (
+      {/* Step 3: Patient Info (if other) OR Select Hospital */}
+      {step === 3 && bookingFor === 'other' && (
         <>
           <h2 className={`text-xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
             {language === 'fr' ? 'Informations du patient' : 'Patient Information'}
           </h2>
           <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl p-4 shadow-md space-y-4`}>
-            <div>
-              <label className={`block text-sm mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                {language === 'fr' ? 'Nom complet' : 'Full name'}
-              </label>
-              <input 
-                type="text" 
-                value={patientName} 
-                onChange={(e) => setPatientName(e.target.value)}
-                data-testid="patient-name-input"
-                className={`w-full p-3 rounded-lg ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-gray-100 border-gray-200'} border`} 
-                placeholder="Ex: Jean Kamga" 
-              />
-            </div>
-            <div>
-              <label className={`block text-sm mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                {language === 'fr' ? 'Âge' : 'Age'}
-              </label>
-              <input 
-                type="number" 
-                value={patientAge} 
-                onChange={(e) => setPatientAge(e.target.value)}
-                data-testid="patient-age-input"
-                className={`w-full p-3 rounded-lg ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-gray-100 border-gray-200'} border`} 
-                placeholder="Ex: 5" 
-              />
-            </div>
-            <div>
-              <label className={`block text-sm mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                {language === 'fr' ? 'Relation' : 'Relationship'}
-              </label>
-              <select 
-                value={patientRelation} 
-                onChange={(e) => setPatientRelation(e.target.value)}
-                data-testid="patient-relation-select"
-                className={`w-full p-3 rounded-lg ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-gray-100 border-gray-200'} border`}
-              >
-                <option value="">{language === 'fr' ? 'Sélectionner...' : 'Select...'}</option>
-                <option value="child">{language === 'fr' ? 'Mon enfant' : 'My child'}</option>
-                <option value="parent">{language === 'fr' ? 'Mon parent' : 'My parent'}</option>
-                <option value="spouse">{language === 'fr' ? 'Mon conjoint' : 'My spouse'}</option>
-                <option value="sibling">{language === 'fr' ? 'Mon frère/sœur' : 'My sibling'}</option>
-                <option value="other">{language === 'fr' ? 'Autre' : 'Other'}</option>
-              </select>
-            </div>
+            <input 
+              type="text" 
+              value={patientName} 
+              onChange={(e) => setPatientName(e.target.value)}
+              data-testid="patient-name-input"
+              placeholder={language === 'fr' ? 'Nom complet' : 'Full name'}
+              className={`w-full p-3 rounded-lg ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-gray-100 border-gray-200'} border`} 
+            />
+            <input 
+              type="number" 
+              value={patientAge} 
+              onChange={(e) => setPatientAge(e.target.value)}
+              data-testid="patient-age-input"
+              placeholder={language === 'fr' ? 'Âge' : 'Age'}
+              className={`w-full p-3 rounded-lg ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-gray-100 border-gray-200'} border`} 
+            />
+            <select 
+              value={patientRelation} 
+              onChange={(e) => setPatientRelation(e.target.value)}
+              data-testid="patient-relation-select"
+              className={`w-full p-3 rounded-lg ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-gray-100 border-gray-200'} border`}
+            >
+              <option value="">{language === 'fr' ? 'Relation...' : 'Relationship...'}</option>
+              <option value="child">{language === 'fr' ? 'Enfant' : 'Child'}</option>
+              <option value="parent">{language === 'fr' ? 'Parent' : 'Parent'}</option>
+              <option value="spouse">{language === 'fr' ? 'Conjoint' : 'Spouse'}</option>
+              <option value="other">{language === 'fr' ? 'Autre' : 'Other'}</option>
+            </select>
             <button 
-              onClick={() => setStep(3)} 
-              disabled={!patientName || !patientAge || !patientRelation}
-              data-testid="continue-patient-info-btn"
-              className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold disabled:opacity-50 hover:bg-green-700 transition"
+              onClick={() => setStep(4)} 
+              disabled={!patientName || !patientAge}
+              data-testid="continue-patient-btn"
+              className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold disabled:opacity-50"
             >
               {language === 'fr' ? 'Continuer' : 'Continue'}
             </button>
@@ -406,11 +618,11 @@ const BookAppointment: React.FC = () => {
         </>
       )}
 
-      {/* Step 2/3: Select Hospital */}
-      {((step === 2 && bookingFor === 'self') || (step === 3 && bookingFor === 'other')) && (
+      {/* Step 3/4: Select Hospital */}
+      {((step === 3 && bookingFor === 'self') || (step === 4 && bookingFor === 'other')) && (
         <>
           <h2 className={`text-xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-            {language === 'fr' ? 'Choisir un Hôpital' : 'Choose a Hospital'}
+            {language === 'fr' ? 'Choisir un Établissement' : 'Choose a Facility'}
           </h2>
           <div className="space-y-3">
             {hospitals.map(hospital => (
@@ -433,22 +645,14 @@ const BookAppointment: React.FC = () => {
         </>
       )}
 
-      {/* Step 3/4: Select Doctor */}
-      {((step === 3 && bookingFor === 'self') || (step === 4 && bookingFor === 'other')) && selectedHospital && (
+      {/* Step 4/5: Select Doctor */}
+      {((step === 4 && bookingFor === 'self') || (step === 5 && bookingFor === 'other')) && selectedHospital && (
         <>
           <h2 className={`text-xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
             {language === 'fr' ? 'Choisir un Médecin' : 'Choose a Doctor'}
           </h2>
           <p className={`text-sm mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{selectedHospital.name}</p>
           
-          <div className={`${darkMode ? 'bg-gray-800' : 'bg-green-50'} rounded-xl p-3 mb-4 text-sm`}>
-            <p className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
-              {language === 'fr' ? 'Consultation générale: ' : 'General consultation: '}<strong>5 000 FCFA</strong> | 
-              {language === 'fr' ? ' Spécialiste: ' : ' Specialist: '}<strong>7 000 FCFA</strong> |
-              {language === 'fr' ? ' Professeur: ' : ' Professor: '}<strong>15 000 FCFA</strong>
-            </p>
-          </div>
-
           <div className="space-y-3">
             {getDoctorsForHospital().map(doc => (
               <div 
@@ -462,12 +666,20 @@ const BookAppointment: React.FC = () => {
                   <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{doc.name}</h3>
                   <p className="text-green-600 text-sm">{doc.specialty}</p>
                   <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {language === 'fr' ? 'Consultations: ' : 'Consultations: '}
                     {doc.consultationDays.map(d => language === 'fr' ? dayNames[d] : d).join(', ')}
                   </p>
-                  <p className={`text-sm font-semibold mt-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {doc.fee.toLocaleString()} FCFA
-                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      doc.consultationType === 'general' ? 'bg-green-100 text-green-700' :
+                      doc.consultationType === 'specialist' ? 'bg-blue-100 text-blue-700' :
+                      'bg-purple-100 text-purple-700'
+                    }`}>
+                      {doc.consultationType === 'general' ? (language === 'fr' ? 'Généraliste' : 'General') :
+                       doc.consultationType === 'specialist' ? (language === 'fr' ? 'Spécialiste' : 'Specialist') :
+                       'Professeur'}
+                    </span>
+                    <span className="text-green-600 font-bold">{formatPrice(getDoctorPrice(doc))} FCFA</span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -475,16 +687,12 @@ const BookAppointment: React.FC = () => {
         </>
       )}
 
-      {/* Step 4/5: Select Date and Time */}
-      {((step === 4 && bookingFor === 'self') || (step === 5 && bookingFor === 'other')) && selectedDoctor && (
+      {/* Step 5/6: Select Date and Time */}
+      {((step === 5 && bookingFor === 'self') || (step === 6 && bookingFor === 'other')) && selectedDoctor && (
         <>
-          <h2 className={`text-xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+          <h2 className={`text-xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
             {language === 'fr' ? 'Choisir Date et Heure' : 'Choose Date and Time'}
           </h2>
-          <p className={`text-sm mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-            {selectedDoctor.name} - {language === 'fr' ? 'Jours disponibles: ' : 'Available days: '}
-            {selectedDoctor.consultationDays.map(d => language === 'fr' ? dayNames[d] : d).join(', ')}
-          </p>
 
           {/* ExpressCare Option */}
           <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl p-4 mb-4 shadow-md`}>
@@ -496,17 +704,20 @@ const BookAppointment: React.FC = () => {
                 <div>
                   <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>ExpressCare</p>
                   <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {language === 'fr' ? 'Service prioritaire (+5 000 FCFA)' : 'Priority service (+5,000 FCFA)'}
+                    {language === 'fr' ? 'Priorité (passer devant)' : 'Priority (skip queue)'}
                   </p>
                 </div>
               </div>
-              <input
-                type="checkbox"
-                checked={expressCare}
-                onChange={(e) => setExpressCare(e.target.checked)}
-                data-testid="express-care-checkbox"
-                className="w-5 h-5 text-green-600 rounded"
-              />
+              <div className="flex items-center gap-2">
+                <span className="text-yellow-600 font-semibold text-sm">+{formatPrice(PRICING.surcharges.expressCare)}</span>
+                <input
+                  type="checkbox"
+                  checked={expressCare}
+                  onChange={(e) => setExpressCare(e.target.checked)}
+                  data-testid="express-care-checkbox"
+                  className="w-5 h-5 text-green-600 rounded"
+                />
+              </div>
             </label>
           </div>
 
@@ -564,53 +775,33 @@ const BookAppointment: React.FC = () => {
             </>
           )}
 
-          {/* Summary and Confirm */}
-          {selectedTime && (
-            <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl p-4 mb-4 shadow-md`}>
-              <h3 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                {language === 'fr' ? 'Résumé' : 'Summary'}
-              </h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>
-                    {language === 'fr' ? 'Consultation' : 'Consultation'}
-                  </span>
-                  <span className={darkMode ? 'text-white' : 'text-gray-800'}>
-                    {selectedDoctor.fee.toLocaleString()} FCFA
-                  </span>
-                </div>
-                {expressCare && (
-                  <div className="flex justify-between">
-                    <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>ExpressCare</span>
-                    <span className={darkMode ? 'text-white' : 'text-gray-800'}>5 000 FCFA</span>
-                  </div>
-                )}
-                <div className={`pt-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'} flex justify-between font-semibold`}>
-                  <span className={darkMode ? 'text-white' : 'text-gray-800'}>Total</span>
-                  <span className="text-green-600">
-                    {(selectedDoctor.fee + (expressCare ? 5000 : 0)).toLocaleString()} FCFA
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Price Breakdown (before confirm) */}
+          {selectedTime && priceDetails && (
+            <>
+              <PriceBreakdown
+                basePrice={priceDetails.basePrice}
+                baseLabel={priceDetails.baseLabel}
+                homeVisit={consultationType === 'home'}
+                expressCare={expressCare}
+                nightSurcharge={priceDetails.nightFee}
+                holidaySurcharge={priceDetails.holidayFee}
+                darkMode={darkMode}
+                language={language}
+              />
 
-          {selectedTime && (
-            <button 
-              onClick={handleBook} 
-              disabled={loading}
-              data-testid="confirm-booking-btn"
-              className="w-full bg-green-600 text-white py-4 rounded-xl font-semibold hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="animate-spin" size={20} />
-                  {language === 'fr' ? 'Réservation...' : 'Booking...'}
-                </>
-              ) : (
-                language === 'fr' ? 'Confirmer Rendez-vous' : 'Confirm Appointment'
-              )}
-            </button>
+              <button 
+                onClick={handleBook} 
+                disabled={loading}
+                data-testid="confirm-booking-btn"
+                className="w-full mt-4 bg-green-600 text-white py-4 rounded-xl font-semibold hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <><Loader2 className="animate-spin" size={20} />{language === 'fr' ? 'Réservation...' : 'Booking...'}</>
+                ) : (
+                  <>{language === 'fr' ? 'Confirmer' : 'Confirm'} ({formatPrice(priceDetails.total)} FCFA)</>
+                )}
+              </button>
+            </>
           )}
         </>
       )}
