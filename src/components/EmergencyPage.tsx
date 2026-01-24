@@ -225,15 +225,16 @@ const EmergencyPage: React.FC = () => {
                       data-testid={`call-facility-${i}-btn`}
                       className="bg-red-100 text-red-600 p-3 rounded-full hover:bg-red-200 transition-colors"
                     >
-                    <Phone size={20} />
-                  </button>
+                      <Phone size={20} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Action Buttons */}
                 <div className="flex gap-2 mt-3">
                   <button
-                    onClick={() => setSelectedHospital(hospital)}
-                    data-testid={`details-hospital-${i}-btn`}
+                    onClick={() => setSelectedFacility(facility)}
+                    data-testid={`details-facility-${i}-btn`}
                     className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
                       darkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
@@ -241,15 +242,15 @@ const EmergencyPage: React.FC = () => {
                     {language === 'fr' ? 'Départements' : 'Departments'}
                   </button>
                   <button
-                    onClick={() => handleNavigate(hospital)}
-                    data-testid={`navigate-hospital-${i}-btn`}
+                    onClick={() => handleNavigate(facility)}
+                    data-testid={`navigate-facility-${i}-btn`}
                     className="flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-blue-100 text-blue-700 text-sm font-medium hover:bg-blue-200 transition"
                   >
                     <Navigation size={14} /> {language === 'fr' ? 'Y aller' : 'Go'}
                   </button>
                   <button
-                    onClick={() => handleBookAppointment(hospital)}
-                    data-testid={`book-hospital-${i}-btn`}
+                    onClick={() => handleBookAppointment(facility)}
+                    data-testid={`book-facility-${i}-btn`}
                     className="flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition"
                   >
                     <Stethoscope size={14} /> RDV
@@ -261,22 +262,22 @@ const EmergencyPage: React.FC = () => {
         </>
       )}
 
-      {/* Hospital Details Modal */}
-      {selectedHospital && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedHospital(null)}>
+      {/* Facility Details Modal */}
+      {selectedFacility && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedFacility(null)}>
           <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
             <h3 className={`text-xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              {selectedHospital.name}
+              {selectedFacility.name}
             </h3>
             <p className={`text-sm mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              {selectedHospital.city} • {selectedHospital.distance.toFixed(1)} km • ~{selectedHospital.drivingTime} min
+              {selectedFacility.district ? `${selectedFacility.district}, ` : ''}{selectedFacility.city} • {selectedFacility.distance.toFixed(1)} km • ~{selectedFacility.drivingTime} min
             </p>
             
             <h4 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
               {language === 'fr' ? 'Départements / Services' : 'Departments / Services'}
             </h4>
             <div className="flex flex-wrap gap-2 mb-4">
-              {selectedHospital.departments.map((dept: string, i: number) => (
+              {selectedFacility.departments.map((dept: string, i: number) => (
                 <span 
                   key={i} 
                   className="bg-green-100 text-green-700 px-3 py-1.5 rounded-full text-sm font-medium"
