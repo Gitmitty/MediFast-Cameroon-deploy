@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 import { Calendar, Clock, Phone, Star, Stethoscope, Heart, Brain, Wind, Search, Filter, ChevronRight } from 'lucide-react';
 
