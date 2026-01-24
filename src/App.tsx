@@ -15,6 +15,7 @@ import { AppProvider } from "./contexts/AppContext";
 import DoctorsPage from "./pages/DoctorsPage";
 import BookPage from "./components/BookAppointment";
 import HospitalsPage from "./components/HospitalLocator";
+import HospitalDetailPage from "./components/HospitalDetailPage";
 import PaymentPage from "./components/PaymentPage";
 import AppointmentsList from "./components/AppointmentsList";
 import EmergencyPage from "./components/EmergencyPage";
