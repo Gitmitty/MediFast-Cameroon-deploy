@@ -24,22 +24,26 @@ const hospitals = [
 
 const doctorsByHospital: Record<string, Doctor[]> = {
   'jamot': [
-    { id: 'pefura', name: 'Prof. Pefura Yone Eric Walter', specialty: 'Pneumologie', consultationDays: ['Tuesday', 'Thursday'], fee: 2000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206177040_fc6db82d.png' },
-    { id: 'poka', name: 'Dr. Poka Mayap Virginie', specialty: 'Pneumologie', consultationDays: ['Monday', 'Tuesday', 'Thursday'], fee: 2000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206163628_c88b7726.jpg' },
-    { id: 'ekoua', name: 'Dr. Daniel Ekoua', specialty: 'Cardiologie', consultationDays: ['Monday', 'Thursday'], fee: 2000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206169084_63a4d34d.png' },
-    { id: 'tchokonte', name: 'Dr. Tchokonté Nana', specialty: 'Neurologie', consultationDays: ['Monday', 'Wednesday', 'Friday'], fee: 2000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206178236_5d3922a1.png' },
+    { id: 'pefura', name: 'Prof. Pefura Yone Eric Walter', specialty: 'Pneumologie', consultationDays: ['Tuesday', 'Thursday'], fee: 15000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206177040_fc6db82d.png' },
+    { id: 'poka', name: 'Dr. Poka Mayap Virginie', specialty: 'Pneumologie', consultationDays: ['Monday', 'Tuesday', 'Thursday'], fee: 7000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206163628_c88b7726.jpg' },
+    { id: 'ekoua', name: 'Dr. Daniel Ekoua', specialty: 'Cardiologie', consultationDays: ['Monday', 'Thursday'], fee: 7000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206169084_63a4d34d.png' },
+    { id: 'tchokonte', name: 'Dr. Tchokonté Nana', specialty: 'Neurologie', consultationDays: ['Monday', 'Wednesday', 'Friday'], fee: 7000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206178236_5d3922a1.png' },
   ],
   'central': [
-    { id: 'general-central', name: 'Dr. Médecin Généraliste', specialty: 'Médecine Générale', consultationDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], fee: 600, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206177040_fc6db82d.png' },
+    { id: 'general-central', name: 'Dr. Médecin Généraliste', specialty: 'Médecine Générale', consultationDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], fee: 5000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206177040_fc6db82d.png' },
+    { id: 'specialist-central', name: 'Dr. Spécialiste', specialty: 'Chirurgie', consultationDays: ['Tuesday', 'Thursday'], fee: 7000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206163628_c88b7726.jpg' },
   ],
   'general-yaounde': [
-    { id: 'general-gy', name: 'Dr. Médecin Généraliste', specialty: 'Médecine Générale', consultationDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], fee: 600, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206163628_c88b7726.jpg' },
+    { id: 'general-gy', name: 'Dr. Médecin Généraliste', specialty: 'Médecine Générale', consultationDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], fee: 5000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206163628_c88b7726.jpg' },
+    { id: 'neuro-gy', name: 'Dr. Neurologue', specialty: 'Neurologie', consultationDays: ['Monday', 'Wednesday'], fee: 7000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206169084_63a4d34d.png' },
   ],
   'general-douala': [
-    { id: 'general-gd', name: 'Dr. Médecin Généraliste', specialty: 'Médecine Générale', consultationDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], fee: 600, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206169084_63a4d34d.png' },
+    { id: 'general-gd', name: 'Dr. Médecin Généraliste', specialty: 'Médecine Générale', consultationDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], fee: 5000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206169084_63a4d34d.png' },
+    { id: 'cardio-gd', name: 'Dr. Cardiologue', specialty: 'Cardiologie', consultationDays: ['Tuesday', 'Friday'], fee: 7000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206178236_5d3922a1.png' },
   ],
   'laquintinie': [
-    { id: 'general-laq', name: 'Dr. Médecin Généraliste', specialty: 'Médecine Générale', consultationDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], fee: 600, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206178236_5d3922a1.png' },
+    { id: 'general-laq', name: 'Dr. Médecin Généraliste', specialty: 'Médecine Générale', consultationDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], fee: 5000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206178236_5d3922a1.png' },
+    { id: 'pediatre-laq', name: 'Dr. Pédiatre', specialty: 'Pédiatrie', consultationDays: ['Monday', 'Wednesday', 'Friday'], fee: 7000, image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206163628_c88b7726.jpg' },
   ],
 };
 
