@@ -437,8 +437,9 @@ const BookAppointment: React.FC = () => {
           
           <div className={`${darkMode ? 'bg-gray-800' : 'bg-green-50'} rounded-xl p-3 mb-4 text-sm`}>
             <p className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
-              {language === 'fr' ? 'Consultation générale: ' : 'General consultation: '}<strong>600 FCFA</strong> | 
-              {language === 'fr' ? ' Spécialiste: ' : ' Specialist: '}<strong>2 000 FCFA</strong>
+              {language === 'fr' ? 'Consultation générale: ' : 'General consultation: '}<strong>5 000 FCFA</strong> | 
+              {language === 'fr' ? ' Spécialiste: ' : ' Specialist: '}<strong>7 000 FCFA</strong> |
+              {language === 'fr' ? ' Professeur: ' : ' Professor: '}<strong>15 000 FCFA</strong>
             </p>
           </div>
 
