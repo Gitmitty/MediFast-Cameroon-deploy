@@ -4,103 +4,8 @@ import { useApp } from '../contexts/AppContext';
 import { Phone, AlertTriangle, Home, Ambulance, MapPin, Clock, Headphones, Navigation, Stethoscope, Loader2, Filter } from 'lucide-react';
 import { allHealthFacilities, getFacilitiesByDistance, facilityTypeLabels, type HealthFacility } from '../data/healthFacilities';
 
-// Complete hospital data with real coordinates and departments
-const hospitalData = [
-  { 
-    id: 'jamot',
-    name: 'Hôpital Jamot Yaoundé', 
-    phone: '+237 222 23 10 15', 
-    emergencyPhone: '+237 222 23 10 16',
-    city: 'Yaoundé',
-    lat: 3.8667, 
-    lon: 11.5167,
-    hasEmergency: true,
-    departments: ['Pneumologie', 'Phtisiologie', 'Médecine Interne', 'Urgences', 'Laboratoire', 'Radiologie']
-  },
-  { 
-    id: 'central',
-    name: 'Hôpital Central de Yaoundé', 
-    phone: '+237 222 23 40 20',
-    emergencyPhone: '+237 222 23 40 21', 
-    city: 'Yaoundé',
-    lat: 3.8480, 
-    lon: 11.5021,
-    hasEmergency: true,
-    departments: ['Médecine Générale', 'Chirurgie', 'Pédiatrie', 'Maternité', 'Gynécologie', 'Urgences', 'Ophtalmologie', 'ORL', 'Cardiologie', 'Laboratoire']
-  },
-  { 
-    id: 'general-yaounde',
-    name: 'Hôpital Général de Yaoundé', 
-    phone: '+237 222 23 20 15',
-    emergencyPhone: '+237 222 23 20 16', 
-    city: 'Yaoundé',
-    lat: 3.8520, 
-    lon: 11.5100,
-    hasEmergency: true,
-    departments: ['Médecine Générale', 'Chirurgie Générale', 'Neurologie', 'Neurochirurgie', 'Orthopédie', 'Traumatologie', 'Réanimation', 'Urgences', 'Cardiologie', 'Gastroentérologie', 'Néphrologie', 'Dialyse']
-  },
-  { 
-    id: 'gyneco-obstetrique',
-    name: 'Hôpital Gynéco-Obstétrique de Yaoundé', 
-    phone: '+237 222 23 16 00',
-    emergencyPhone: '+237 222 23 16 01', 
-    city: 'Yaoundé',
-    lat: 3.8550, 
-    lon: 11.5080,
-    hasEmergency: true,
-    departments: ['Gynécologie', 'Obstétrique', 'Néonatologie', 'Maternité', 'Planification Familiale', 'Urgences Obstétricales']
-  },
-  { 
-    id: 'general-douala',
-    name: 'Hôpital Général de Douala', 
-    phone: '+237 233 42 01 12',
-    emergencyPhone: '+237 233 42 01 13', 
-    city: 'Douala',
-    lat: 4.0511, 
-    lon: 9.7679,
-    hasEmergency: true,
-    departments: ['Médecine Générale', 'Chirurgie', 'Cardiologie', 'Gastroentérologie', 'Neurologie', 'Pédiatrie', 'Urgences', 'Réanimation', 'Oncologie', 'Radiologie']
-  },
-  { 
-    id: 'laquintinie',
-    name: 'Hôpital Laquintinie Douala', 
-    phone: '+237 233 42 56 78',
-    emergencyPhone: '+237 233 42 56 79', 
-    city: 'Douala',
-    lat: 4.0435, 
-    lon: 9.6966,
-    hasEmergency: true,
-    departments: ['Médecine Générale', 'Pédiatrie', 'Gynécologie', 'Maternité', 'Chirurgie', 'Urgences', 'Ophtalmologie', 'Dermatologie']
-  },
-  { 
-    id: 'cme-yaounde',
-    name: 'Centre Médico-Social de Yaoundé', 
-    phone: '+237 222 22 12 34', 
-    city: 'Yaoundé',
-    lat: 3.8600, 
-    lon: 11.5200,
-    hasEmergency: false,
-    departments: ['Médecine Générale', 'Vaccination', 'Consultation Externe']
-  },
-];
-
-// Haversine formula for distance calculation
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth's radius in km
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * (Math.PI / 180)) *
-    Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) ** 2;
-  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-}
-
-// Estimate driving time (average 30 km/h in city traffic)
-function estimateDrivingTime(distanceKm: number): number {
-  return Math.round((distanceKm / 30) * 60); // minutes
-}
+// Type for facility with distance
+type FacilityWithDistance = HealthFacility & { distance: number; drivingTime: number };
 
 const EmergencyPage: React.FC = () => {
   const { darkMode, language } = useApp();
@@ -109,8 +14,9 @@ const EmergencyPage: React.FC = () => {
   const [homeVisitRequested, setHomeVisitRequested] = useState(false);
   const [userLocation, setUserLocation] = useState<{lat: number; lon: number} | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hospitals, setHospitals] = useState<any[]>([]);
-  const [selectedHospital, setSelectedHospital] = useState<any>(null);
+  const [facilities, setFacilities] = useState<FacilityWithDistance[]>([]);
+  const [selectedFacility, setSelectedFacility] = useState<FacilityWithDistance | null>(null);
+  const [filterType, setFilterType] = useState<'all' | 'hospital' | 'clinic' | 'health_center'>('all');
 
   // Get user location on mount
   useEffect(() => {
