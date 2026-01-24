@@ -29,7 +29,7 @@ const doctors: Doctor[] = [
     hospital: 'Hôpital Jamot Yaoundé',
     consultationDays: ['Tuesday', 'Thursday'],
     consultationDaysDisplay: { en: 'Tuesday & Thursday', fr: 'Mardi & Jeudi' },
-    fee: 2000,
+    fee: 15000, // Tarif spécialiste + professeur
     image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206177040_fc6db82d.png',
     experience: '20+ ans',
     rating: 4.9,
@@ -44,7 +44,7 @@ const doctors: Doctor[] = [
     hospital: 'Hôpital Jamot Yaoundé',
     consultationDays: ['Monday', 'Tuesday', 'Thursday'],
     consultationDaysDisplay: { en: 'Monday, Tuesday & Thursday', fr: 'Lundi, Mardi & Jeudi' },
-    fee: 2000,
+    fee: 7000, // Tarif spécialiste hôpital public
     image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206163628_c88b7726.jpg',
     experience: '12+ ans',
     rating: 4.8,
@@ -59,7 +59,7 @@ const doctors: Doctor[] = [
     hospital: 'Hôpital Jamot Yaoundé',
     consultationDays: ['Monday', 'Thursday'],
     consultationDaysDisplay: { en: 'Monday & Thursday', fr: 'Lundi & Jeudi' },
-    fee: 2000,
+    fee: 7000, // Tarif spécialiste hôpital public
     image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206169084_63a4d34d.png',
     experience: '15+ ans',
     rating: 4.9,
@@ -74,7 +74,7 @@ const doctors: Doctor[] = [
     hospital: 'Hôpital Jamot Yaoundé',
     consultationDays: ['Monday', 'Wednesday', 'Friday'],
     consultationDaysDisplay: { en: 'Monday, Wednesday & Friday', fr: 'Lundi, Mercredi & Vendredi' },
-    fee: 2000,
+    fee: 7000, // Tarif spécialiste hôpital public
     image: 'https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1765206178236_5d3922a1.png',
     experience: '10+ ans',
     rating: 4.7,
