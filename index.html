@@ -1,25 +1,59 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MediFast Cameroon</title>
-    <meta name="description" content="Streamline hospital visits in Cameroon with efficient booking and emergency services." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>MboaMed - MediFast Cameroon</title>
+    <meta name="description" content="Application de réservation de rendez-vous médicaux au Cameroun. Soins rapides, moins d'attente." />
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#16a34a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="MboaMed" />
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    
+    <!-- Fallback icon -->
     <link rel="icon" type="image/svg+xml" href="/placeholder.svg" />
 
-    <meta property="og:title" content="MediFast Cameroon" />
-    <meta property="og:description" content="Streamline hospital visits in Cameroon with efficient booking and emergency services." />
+    <!-- Open Graph -->
+    <meta property="og:title" content="MboaMed - MediFast Cameroon" />
+    <meta property="og:description" content="Application de réservation de rendez-vous médicaux au Cameroun" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/og.jpg" />
+    <meta property="og:locale" content="fr_CM" />
 
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="/og.jpg" />
-
+    
+    <!-- Preconnect to Firebase -->
+    <link rel="preconnect" href="https://firebaseio.com" />
+    <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
   </head>
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Register Service Worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered:', registration.scope);
+            })
+            .catch((error) => {
+              console.log('SW registration failed:', error);
+            });
+        });
+      }
+    </script>
   </body>
 </html>

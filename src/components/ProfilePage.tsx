@@ -1,57 +1,196 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
-import { User, Heart, FileText, Bell, Settings, ChevronRight, Plus, Calendar, Loader2, LogOut } from 'lucide-react';
+import { 
+  User, Heart, FileText, Bell, Settings, ChevronRight, Plus, Calendar, 
+  Loader2, LogOut, Camera, X, Phone, AlertCircle, Check, Trash2 
+} from 'lucide-react';
 import { getUserBookings, Booking } from '../services/bookingService';
+import { 
+  getUserProfile, 
+  saveUserProfile, 
+  uploadProfilePhoto,
+  UserProfile 
+} from '../services/userService';
 import { signOut } from 'firebase/auth';
 import { auth } from '../lib/firebase';
+import { useToast } from '../hooks/use-toast';
 
 const ProfilePage: React.FC = () => {
   const { darkMode, language, user, setUser } = useApp();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [activeTab, setActiveTab] = useState<'profile' | 'history' | 'settings'>('profile');
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  
   const [profile, setProfile] = useState({
-    name: user?.fullName || 'Utilisateur',
-    phone: user?.phone || '+237 6XX XXX XXX',
-    email: user?.email || 'email@example.com',
-    bloodType: 'O+',
-    allergies: ['Penicillin'],
-    conditions: ['Hypertension']
+    fullName: '',
+    phone: '',
+    email: '',
+    whatsapp: '',
+    bloodType: '',
+    allergies: [] as string[],
+    chronicConditions: [] as string[],
+    photoURL: ''
   });
+  
+  const [newAllergy, setNewAllergy] = useState('');
+  const [newCondition, setNewCondition] = useState('');
 
+  // Load user profile and bookings
   useEffect(() => {
-    const loadBookings = async () => {
+    const loadData = async () => {
       if (!user) {
         setLoading(false);
         return;
       }
       
       try {
+        // Load profile from Firebase
+        const userProfile = await getUserProfile(user.id);
+        if (userProfile) {
+          setProfile({
+            fullName: userProfile.fullName || user.fullName || '',
+            phone: userProfile.phone || user.phone || '',
+            email: userProfile.email || user.email || '',
+            whatsapp: userProfile.whatsapp || '',
+            bloodType: userProfile.bloodType || '',
+            allergies: userProfile.allergies || [],
+            chronicConditions: userProfile.chronicConditions || [],
+            photoURL: userProfile.photoURL || ''
+          });
+        } else {
+          // Use context user data
+          setProfile(prev => ({
+            ...prev,
+            fullName: user.fullName || '',
+            phone: user.phone || '',
+            email: user.email || ''
+          }));
+        }
+        
+        // Load bookings
         const userBookings = await getUserBookings(user.id);
         setBookings(userBookings);
       } catch (error) {
-        console.error('Error loading bookings:', error);
+        console.error('Error loading profile:', error);
       } finally {
         setLoading(false);
       }
     };
     
-    loadBookings();
+    loadData();
   }, [user]);
 
-  useEffect(() => {
-    if (user) {
+  // Handle photo upload
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+    
+    setUploading(true);
+    try {
+      const photoURL = await uploadProfilePhoto(user.id, file);
+      setProfile(prev => ({ ...prev, photoURL }));
+      toast({
+        title: language === 'fr' ? 'Photo mise à jour!' : 'Photo updated!',
+        description: language === 'fr' ? 'Votre photo de profil a été changée' : 'Your profile photo has been changed'
+      });
+    } catch (error: any) {
+      toast({
+        title: language === 'fr' ? 'Erreur' : 'Error',
+        description: error.message || (language === 'fr' ? 'Impossible de télécharger la photo' : 'Failed to upload photo'),
+        variant: 'destructive'
+      });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Save profile changes
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    
+    setSaving(true);
+    try {
+      await saveUserProfile(user.id, {
+        fullName: profile.fullName,
+        phone: profile.phone,
+        email: profile.email,
+        whatsapp: profile.whatsapp,
+        bloodType: profile.bloodType,
+        allergies: profile.allergies,
+        chronicConditions: profile.chronicConditions
+      });
+      
+      // Update context
+      setUser({
+        ...user,
+        fullName: profile.fullName,
+        phone: profile.phone
+      });
+      
+      toast({
+        title: language === 'fr' ? 'Profil sauvegardé!' : 'Profile saved!',
+        description: language === 'fr' ? 'Vos informations ont été mises à jour' : 'Your information has been updated'
+      });
+      setEditMode(false);
+    } catch (error) {
+      toast({
+        title: language === 'fr' ? 'Erreur' : 'Error',
+        description: language === 'fr' ? 'Impossible de sauvegarder' : 'Failed to save',
+        variant: 'destructive'
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Add allergy
+  const addAllergy = () => {
+    if (newAllergy.trim() && !profile.allergies.includes(newAllergy.trim())) {
       setProfile(prev => ({
         ...prev,
-        name: user.fullName || 'Utilisateur',
-        email: user.email || 'email@example.com',
-        phone: user.phone || '+237 6XX XXX XXX',
+        allergies: [...prev.allergies, newAllergy.trim()]
       }));
+      setNewAllergy('');
     }
-  }, [user]);
+  };
+
+  // Remove allergy
+  const removeAllergy = (allergy: string) => {
+    setProfile(prev => ({
+      ...prev,
+      allergies: prev.allergies.filter(a => a !== allergy)
+    }));
+  };
+
+  // Add condition
+  const addCondition = () => {
+    if (newCondition.trim() && !profile.chronicConditions.includes(newCondition.trim())) {
+      setProfile(prev => ({
+        ...prev,
+        chronicConditions: [...prev.chronicConditions, newCondition.trim()]
+      }));
+      setNewCondition('');
+    }
+  };
+
+  // Remove condition
+  const removeCondition = (condition: string) => {
+    setProfile(prev => ({
+      ...prev,
+      chronicConditions: prev.chronicConditions.filter(c => c !== condition)
+    }));
+  };
 
   const handleLogout = async () => {
     try {
@@ -77,6 +216,8 @@ const ProfilePage: React.FC = () => {
     { id: 'settings', icon: Settings, label: language === 'fr' ? 'Paramètres' : 'Settings' },
   ];
 
+  const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed': return 'bg-green-100 text-green-700';
@@ -99,20 +240,83 @@ const ProfilePage: React.FC = () => {
     return labels[status]?.[language === 'fr' ? 'fr' : 'en'] || status;
   };
 
+  if (loading) {
+    return (
+      <div className={`min-h-screen pt-20 pb-24 px-4 flex items-center justify-center ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+        <div className="text-center">
+          <Loader2 className="animate-spin mx-auto mb-4 text-green-600" size={48} />
+          <p className={darkMode ? 'text-gray-400' : 'text-gray-600'}>
+            {language === 'fr' ? 'Chargement du profil...' : 'Loading profile...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen pt-20 pb-24 px-4 ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`} data-testid="profile-page">
-      {/* Profile Header */}
+      {/* Profile Header with Photo Upload */}
       <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-6 mb-6 shadow-lg`}>
         <div className="flex items-center gap-4">
-          <img 
-            src={user?.photoURL || "https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1764608418372_3598bb25.webp"}
-            alt="Profile" 
-            className="w-20 h-20 rounded-full object-cover border-4 border-green-500" 
-          />
+          {/* Profile Photo with Upload */}
+          <div className="relative">
+            <img 
+              src={profile.photoURL || "https://d64gsuwffb70l.cloudfront.net/692db78c383879166ccc73e9_1764608418372_3598bb25.webp"}
+              alt="Profile" 
+              className="w-20 h-20 rounded-full object-cover border-4 border-green-500" 
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              data-testid="upload-photo-btn"
+              className="absolute bottom-0 right-0 w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white hover:bg-green-700 transition shadow-lg"
+            >
+              {uploading ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                <Camera size={16} />
+              )}
+            </button>
+            <input 
+              ref={fileInputRef}
+              type="file" 
+              accept="image/*"
+              onChange={handlePhotoUpload}
+              className="hidden"
+              data-testid="photo-input"
+            />
+          </div>
+          
           <div className="flex-1">
-            <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{profile.name}</h2>
+            {editMode ? (
+              <input
+                type="text"
+                value={profile.fullName}
+                onChange={(e) => setProfile(prev => ({ ...prev, fullName: e.target.value }))}
+                data-testid="name-input"
+                className={`text-xl font-bold w-full mb-1 p-1 rounded ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100'}`}
+                placeholder={language === 'fr' ? 'Votre nom' : 'Your name'}
+              />
+            ) : (
+              <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                {profile.fullName || (language === 'fr' ? 'Utilisateur' : 'User')}
+              </h2>
+            )}
             <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{profile.email}</p>
-            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{profile.phone}</p>
+            {editMode ? (
+              <input
+                type="tel"
+                value={profile.phone}
+                onChange={(e) => setProfile(prev => ({ ...prev, phone: e.target.value }))}
+                data-testid="phone-input"
+                className={`text-sm w-full p-1 rounded mt-1 ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100'}`}
+                placeholder="+237 6XX XXX XXX"
+              />
+            ) : (
+              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                {profile.phone || '+237 6XX XXX XXX'}
+              </p>
+            )}
           </div>
         </div>
         
@@ -158,45 +362,165 @@ const ProfilePage: React.FC = () => {
             <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
               {language === 'fr' ? 'Informations Médicales' : 'Medical Info'}
             </h3>
-            <button 
-              onClick={() => setEditMode(!editMode)} 
-              data-testid="edit-profile-btn"
-              className="text-green-600 text-sm hover:underline"
-            >
-              {editMode ? (language === 'fr' ? 'Sauvegarder' : 'Save') : (language === 'fr' ? 'Modifier' : 'Edit')}
-            </button>
+            {editMode ? (
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setEditMode(false)} 
+                  className="text-gray-500 text-sm hover:underline"
+                >
+                  {language === 'fr' ? 'Annuler' : 'Cancel'}
+                </button>
+                <button 
+                  onClick={handleSaveProfile}
+                  disabled={saving}
+                  data-testid="save-profile-btn"
+                  className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1 hover:bg-green-700 disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+                  {language === 'fr' ? 'Sauvegarder' : 'Save'}
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setEditMode(true)} 
+                data-testid="edit-profile-btn"
+                className="text-green-600 text-sm hover:underline"
+              >
+                {language === 'fr' ? 'Modifier' : 'Edit'}
+              </button>
+            )}
           </div>
+          
           <div className="space-y-4">
+            {/* WhatsApp Number */}
+            <div className={`p-4 rounded-xl ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'} flex items-center gap-2`}>
+                <Phone size={14} /> WhatsApp
+              </p>
+              {editMode ? (
+                <input
+                  type="tel"
+                  value={profile.whatsapp}
+                  onChange={(e) => setProfile(prev => ({ ...prev, whatsapp: e.target.value }))}
+                  data-testid="whatsapp-input"
+                  className={`w-full p-2 rounded mt-1 ${darkMode ? 'bg-gray-600 text-white' : 'bg-white border'}`}
+                  placeholder="+237 6XX XXX XXX"
+                />
+              ) : (
+                <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                  {profile.whatsapp || (language === 'fr' ? 'Non renseigné' : 'Not set')}
+                </p>
+              )}
+            </div>
+
+            {/* Blood Type */}
             <div className={`p-4 rounded-xl ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
               <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                 {language === 'fr' ? 'Groupe Sanguin' : 'Blood Type'}
               </p>
-              <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{profile.bloodType}</p>
+              {editMode ? (
+                <select
+                  value={profile.bloodType}
+                  onChange={(e) => setProfile(prev => ({ ...prev, bloodType: e.target.value }))}
+                  data-testid="blood-type-select"
+                  className={`w-full p-2 rounded mt-1 ${darkMode ? 'bg-gray-600 text-white' : 'bg-white border'}`}
+                >
+                  <option value="">{language === 'fr' ? 'Sélectionner...' : 'Select...'}</option>
+                  {bloodTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              ) : (
+                <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                  {profile.bloodType || (language === 'fr' ? 'Non renseigné' : 'Not set')}
+                </p>
+              )}
             </div>
+            
+            {/* Allergies */}
             <div className={`p-4 rounded-xl ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
               <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                 {language === 'fr' ? 'Allergies' : 'Allergies'}
               </p>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {profile.allergies.map((a, i) => (
-                  <span key={i} className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm">{a}</span>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {profile.allergies.map((allergy, i) => (
+                  <span key={i} className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm flex items-center gap-1">
+                    {allergy}
+                    {editMode && (
+                      <button onClick={() => removeAllergy(allergy)} className="hover:text-red-900">
+                        <X size={14} />
+                      </button>
+                    )}
+                  </span>
                 ))}
-                {editMode && (
-                  <button className="bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-sm flex items-center gap-1 hover:bg-gray-300 transition">
-                    <Plus size={14} /> Add
-                  </button>
+                {profile.allergies.length === 0 && !editMode && (
+                  <span className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {language === 'fr' ? 'Aucune allergie enregistrée' : 'No allergies recorded'}
+                  </span>
                 )}
               </div>
+              {editMode && (
+                <div className="flex gap-2 mt-2">
+                  <input
+                    type="text"
+                    value={newAllergy}
+                    onChange={(e) => setNewAllergy(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addAllergy()}
+                    data-testid="new-allergy-input"
+                    placeholder={language === 'fr' ? 'Ajouter une allergie...' : 'Add allergy...'}
+                    className={`flex-1 p-2 rounded text-sm ${darkMode ? 'bg-gray-600 text-white' : 'bg-white border'}`}
+                  />
+                  <button 
+                    onClick={addAllergy}
+                    className="bg-red-100 text-red-700 px-3 py-1 rounded text-sm hover:bg-red-200"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+              )}
             </div>
+            
+            {/* Chronic Conditions */}
             <div className={`p-4 rounded-xl ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
               <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                 {language === 'fr' ? 'Conditions Chroniques' : 'Chronic Conditions'}
               </p>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {profile.conditions.map((c, i) => (
-                  <span key={i} className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm">{c}</span>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {profile.chronicConditions.map((condition, i) => (
+                  <span key={i} className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm flex items-center gap-1">
+                    {condition}
+                    {editMode && (
+                      <button onClick={() => removeCondition(condition)} className="hover:text-yellow-900">
+                        <X size={14} />
+                      </button>
+                    )}
+                  </span>
                 ))}
+                {profile.chronicConditions.length === 0 && !editMode && (
+                  <span className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {language === 'fr' ? 'Aucune condition enregistrée' : 'No conditions recorded'}
+                  </span>
+                )}
               </div>
+              {editMode && (
+                <div className="flex gap-2 mt-2">
+                  <input
+                    type="text"
+                    value={newCondition}
+                    onChange={(e) => setNewCondition(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addCondition()}
+                    data-testid="new-condition-input"
+                    placeholder={language === 'fr' ? 'Ajouter une condition...' : 'Add condition...'}
+                    className={`flex-1 p-2 rounded text-sm ${darkMode ? 'bg-gray-600 text-white' : 'bg-white border'}`}
+                  />
+                  <button 
+                    onClick={addCondition}
+                    className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded text-sm hover:bg-yellow-200"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -205,14 +529,7 @@ const ProfilePage: React.FC = () => {
       {/* History/Appointments Tab */}
       {activeTab === 'history' && (
         <div className="space-y-4">
-          {loading ? (
-            <div className="text-center py-8">
-              <Loader2 className="animate-spin mx-auto mb-4 text-green-600" size={32} />
-              <p className={darkMode ? 'text-gray-400' : 'text-gray-600'}>
-                {language === 'fr' ? 'Chargement...' : 'Loading...'}
-              </p>
-            </div>
-          ) : bookings.length === 0 ? (
+          {bookings.length === 0 ? (
             <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl p-8 text-center shadow-md`}>
               <Calendar className="mx-auto mb-4 text-gray-400" size={48} />
               <p className={darkMode ? 'text-gray-400' : 'text-gray-600'}>
