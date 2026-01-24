@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 import { Check, Loader2, AlertCircle, ChevronLeft, Zap, Home, Stethoscope, Phone } from 'lucide-react';
-import { initiatePayment, checkPaymentStatus, detectProvider, isValidCameroonPhone, formatPhoneNumber, providerInfo, paymentPrices } from '../services/paymentService';
+import { initiatePayment, checkPaymentStatus, detectProvider, isValidCameroonPhone, formatPhoneNumber, providerInfo } from '../services/paymentService';
 import { updateBookingStatus } from '../services/bookingService';
+import { PRICING, formatPrice } from '../config/pricing';
 
 interface PaymentOption {
   id: string;
@@ -17,35 +18,35 @@ const paymentOptions: PaymentOption[] = [
   {
     id: 'general',
     name: { en: 'General Consultation', fr: 'Consultation Générale' },
-    price: paymentPrices.consultationGeneral,
+    price: PRICING.consultation.general,
     description: { en: 'Standard doctor visit', fr: 'Visite médicale standard' },
     icon: <Stethoscope size={20} />
   },
   {
     id: 'specialist',
     name: { en: 'Specialist Consultation', fr: 'Consultation Spécialiste' },
-    price: paymentPrices.consultationSpecialist,
+    price: PRICING.consultation.specialist,
     description: { en: 'Cardiologist, Neurologist, Pneumologist', fr: 'Cardiologue, Neurologue, Pneumologue' },
     icon: <Stethoscope size={20} />
   },
   {
     id: 'professor',
     name: { en: 'Professor Consultation', fr: 'Consultation Professeur' },
-    price: paymentPrices.consultationProfessor,
+    price: PRICING.consultation.professor,
     description: { en: 'Senior specialist professor', fr: 'Professeur spécialiste senior' },
     icon: <Stethoscope size={20} />
   },
   {
     id: 'expresscare',
     name: { en: 'ExpressCare Priority', fr: 'ExpressCare Priorité' },
-    price: paymentPrices.expressCare,
+    price: PRICING.surcharges.expressCare,
     description: { en: 'Skip the queue, priority service', fr: 'Passez devant, service prioritaire' },
     icon: <Zap size={20} />
   },
   {
     id: 'homevisit',
     name: { en: 'Home Doctor Visit', fr: 'Visite à Domicile' },
-    price: paymentPrices.homeVisit,
+    price: PRICING.homeVisit,
     description: { en: 'Doctor comes to your home', fr: 'Le médecin vient chez vous' },
     icon: <Home size={20} />
   },
