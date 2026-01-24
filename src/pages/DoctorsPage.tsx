@@ -168,17 +168,17 @@ const DoctorsPage: React.FC = () => {
       {/* Pricing Info */}
       <div className={`${darkMode ? 'bg-gray-800' : 'bg-green-50'} rounded-xl p-4 mb-4 border ${darkMode ? 'border-gray-700' : 'border-green-200'}`}>
         <h3 className={`font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-          {language === 'fr' ? 'Tarifs des Consultations' : 'Consultation Fees'}
+          {language === 'fr' ? 'Tarifs des Consultations (Hôpital Public)' : 'Consultation Fees (Public Hospital)'}
         </h3>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
-            {language === 'fr' ? 'Consultation générale:' : 'General consultation:'} <strong>600 FCFA</strong>
+            {language === 'fr' ? 'Consultation générale:' : 'General consultation:'} <strong>5 000 FCFA</strong>
           </div>
           <div className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
-            {language === 'fr' ? 'Spécialiste:' : 'Specialist:'} <strong>2 000 FCFA</strong>
+            {language === 'fr' ? 'Spécialiste:' : 'Specialist:'} <strong>7 000 FCFA</strong>
           </div>
           <div className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
-            ExpressCare: <strong>5 000 FCFA</strong>
+            {language === 'fr' ? 'Professeur:' : 'Professor:'} <strong>15 000 FCFA</strong>
           </div>
           <div className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
             {language === 'fr' ? 'Visite domicile:' : 'Home visit:'} <strong>10 000 FCFA</strong>
