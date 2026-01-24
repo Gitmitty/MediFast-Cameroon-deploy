@@ -310,16 +310,18 @@ const DoctorsPage: React.FC = () => {
             <div className="flex gap-3">
               <button
                 onClick={() => setSelectedDoctor(null)}
-                className={`flex-1 py-3 rounded-xl font-semibold ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-800'}`}
+                data-testid="close-doctor-modal-btn"
+                className={`flex-1 py-3 rounded-xl font-semibold ${darkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'} transition`}
               >
                 {language === 'fr' ? 'Fermer' : 'Close'}
               </button>
               <button
                 onClick={() => {
                   setSelectedDoctor(null);
-                  setCurrentPage('book');
+                  navigate('/book');
                 }}
-                className="flex-1 bg-green-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
+                data-testid="book-doctor-btn"
+                className="flex-1 bg-green-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-green-700 transition"
               >
                 {language === 'fr' ? 'Prendre RDV' : 'Book Now'}
                 <ChevronRight size={18} />
