@@ -289,24 +289,24 @@ const EmergencyPage: React.FC = () => {
 
             <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-xl p-4 mb-4`}>
               <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                <strong>{language === 'fr' ? 'Téléphone:' : 'Phone:'}</strong> {selectedHospital.phone}
+                <strong>{language === 'fr' ? 'Téléphone:' : 'Phone:'}</strong> {selectedFacility.phone || 'N/A'}
               </p>
-              {selectedHospital.emergencyPhone && (
+              {selectedFacility.emergencyPhone && (
                 <p className={`text-sm mt-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  <strong>{language === 'fr' ? 'Urgences:' : 'Emergency:'}</strong> {selectedHospital.emergencyPhone}
+                  <strong>{language === 'fr' ? 'Urgences:' : 'Emergency:'}</strong> {selectedFacility.emergencyPhone}
                 </p>
               )}
             </div>
 
             <div className="flex gap-3">
               <button
-                onClick={() => setSelectedHospital(null)}
+                onClick={() => setSelectedFacility(null)}
                 className={`flex-1 py-3 rounded-xl font-medium ${darkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'} transition`}
               >
                 {language === 'fr' ? 'Fermer' : 'Close'}
               </button>
               <button
-                onClick={() => { setSelectedHospital(null); handleBookAppointment(selectedHospital); }}
+                onClick={() => { setSelectedFacility(null); handleBookAppointment(selectedFacility); }}
                 data-testid="modal-book-btn"
                 className="flex-1 bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition"
               >
