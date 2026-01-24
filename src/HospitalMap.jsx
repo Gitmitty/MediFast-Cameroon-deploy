@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
-import { MapPin, Clock, Phone } from "lucide-react";
+import { MapPin, Clock, Phone, Stethoscope, Navigation, List, Map as MapIcon } from "lucide-react";
+import { useApp } from "./contexts/AppContext";
 
 // Fix missing marker icons in Vite/Vercel
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
@@ -33,58 +35,43 @@ function getDistanceKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
-
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1 * (Math.PI / 180)) *
       Math.cos(lat2 * (Math.PI / 180)) *
       Math.sin(dLon / 2) ** 2;
-
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-//sort departments depending on name and type
 function inferDepartment(h) {
   const name = h.tags?.name?.toLowerCase() || "";
-
   if (name.includes("matern") || name.includes("obst")) return "Maternity";
   if (name.includes("pediatr")) return "Pediatrics";
   if (name.includes("urgence") || name.includes("emerg")) return "Emergency";
   if (name.includes("denta")) return "Dental";
   if (name.includes("cardio")) return "Cardiology";
-
   return "General";
 }
 
-//function to help reverse geocode time limit
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-//function to find an address for hospitals using the lat and lon found
 async function reverseGeocode(lat, lon) {
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1&zoom=18&extratags=1&namedetails=1`;
-
     const res = await fetch(url, {
       headers: {
-        "User-Agent": "HospitalLocatorApp/1.0 (contact: your-email@example.com)",
-        "Referer": "https://medi-fast-cameroon-n5m9h67u8-tables-projects-0784640d.vercel.app/"
+        "User-Agent": "HospitalLocatorApp/1.0",
+        "Referer": "https://medi-fast-cameroon.vercel.app/"
       }
     });
-
     const data = await res.json();
-
     return {
       displayName: data.display_name || null,
       street: data.address?.road || null,
       city: data.address?.city || data.address?.town || data.address?.village || null,
-      name:
-        data.namedetails?.name ||
-        data.namedetails?.["name:en"] ||
-        data.extratags?.official_name ||
-        data.extratags?.operator ||
-        null
+      name: data.namedetails?.name || data.extratags?.official_name || null
     };
   } catch (err) {
     console.warn("Reverse geocoding failed:", err);
@@ -92,25 +79,19 @@ async function reverseGeocode(lat, lon) {
   }
 }
 
-
-//function that tries to find name of hospital
 function inferName(h, reverseData) {
   const tags = h.tags || {};
-
   return (
     tags.name ||
     tags["name:en"] ||
     tags.official_name ||
     tags.alt_name ||
-    reverseData?.name ||                     
-    reverseData?.displayName?.split(",")[0] || 
+    reverseData?.name ||
+    reverseData?.displayName?.split(",")[0] ||
     "Unnamed Hospital"
   );
 }
 
-
-
-//styles for buttons depending on department
 const departmentStyles = {
   All: { icon: "🌍", color: "bg-gray-200 text-gray-800", active: "bg-gray-700 text-white" },
   Maternity: { icon: "🤱", color: "bg-pink-200 text-pink-800", active: "bg-pink-600 text-white" },
@@ -121,18 +102,19 @@ const departmentStyles = {
   General: { icon: "🏥", color: "bg-blue-200 text-blue-800", active: "bg-blue-600 text-white" }
 };
 
-
 export default function HospitalMap() {
+  const { darkMode, language } = useApp();
+  const navigate = useNavigate();
   const [position, setPosition] = useState(null);
   const [hospitals, setHospitals] = useState([]);
   const [nearest, setNearest] = useState(null);
   const [selectedHospital, setSelectedHospital] = useState(null);
   const [selectedDept, setSelectedDept] = useState("All");
   const [departments, setDepartments] = useState([]);
+  const [viewMode, setViewMode] = useState("split"); // "map", "list", "split"
+  const [loading, setLoading] = useState(true);
 
-  // -------------------------------
-  // 1. GET USER LOCATION WITH TIMEOUT + FALLBACK
-  // -------------------------------
+  // GET USER LOCATION
   useEffect(() => {
     let timeoutId;
 
@@ -144,423 +126,375 @@ export default function HospitalMap() {
     function error(err) {
       clearTimeout(timeoutId);
       console.warn("Geolocation failed:", err);
-      setPosition([3.8480, 11.5021]); // Yaoundé
+      setPosition([3.8480, 11.5021]); // Yaoundé fallback
     }
 
     navigator.geolocation.getCurrentPosition(success, error);
 
     timeoutId = setTimeout(() => {
       console.warn("Geolocation timed out — using fallback");
-      setPosition([3.8480, 11.5021]); // Yaoundé
+      setPosition([3.8480, 11.5021]);
     }, 5000);
   }, []);
 
-// -------------------------------
-// 2. FETCH HOSPITALS + ROUTING
-// -------------------------------
-useEffect(() => {
-  if (!position) return;
+  // FETCH HOSPITALS
+  useEffect(() => {
+    if (!position) return;
 
-  const [lat, lon] = position;
+    const [lat, lon] = position;
 
-  const query = `
-    [out:json][timeout:25];
-    (
-      node["amenity"="hospital"](around:45000, ${lat}, ${lon});
-      way["amenity"="hospital"](around:45000, ${lat}, ${lon});
-      relation["amenity"="hospital"](around:45000, ${lat}, ${lon});
-    );
-    out center;
-  `;
+    const query = `
+      [out:json][timeout:25];
+      (
+        node["amenity"="hospital"](around:45000, ${lat}, ${lon});
+        way["amenity"="hospital"](around:45000, ${lat}, ${lon});
+        relation["amenity"="hospital"](around:45000, ${lat}, ${lon});
+      );
+      out center;
+    `;
 
-  const servers = [
-    "https://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
-    "https://overpass.nchc.org.tw/api/interpreter",
-    "https://overpass.openstreetmap.fr/api/interpreter",
-    "https://overpass.osm.ch/api/interpreter",
-  ];
+    const servers = [
+      "https://overpass-api.de/api/interpreter",
+      "https://overpass.kumi.systems/api/interpreter",
+      "https://overpass.nchc.org.tw/api/interpreter",
+    ];
 
-  function fetchWithTimeout(url, options, timeout = 8000) {
-    return Promise.race([
-      fetch(url, options),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout")), timeout)
-      ),
-    ]);
-  }
-
-  async function fetchWithFallback(query, retries = 2) {
-    for (let server of servers) {
-      for (let attempt = 1; attempt <= retries; attempt++) {
+    async function fetchOverpass(query) {
+      for (const server of servers) {
         try {
-          console.log(`Fetching from ${server} (attempt ${attempt})`);
-
-          const res = await fetchWithTimeout(server, {
-            method: "POST",
-            body: query,
-          });
-
+          const res = await fetch(server, { method: "POST", body: query });
           const text = await res.text();
-
-          if (text.trim().startsWith("<")) {
-            throw new Error("Received HTML instead of JSON");
-          }
-
+          if (text.trim().startsWith("<")) continue;
           return JSON.parse(text);
         } catch (err) {
-          console.warn(`Error from ${server} attempt ${attempt}:`, err);
-          await new Promise((resolve) => setTimeout(resolve, 1200));
+          console.warn("Overpass server failed:", server);
         }
       }
+      throw new Error("All Overpass servers failed");
     }
-    throw new Error("All Overpass servers failed");
-  }
 
-  // Small helper to respect Nominatim rate limits
-  function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
+    fetchOverpass(query)
+      .then(async (data) => {
+        const rawHospitals = (data.elements || [])
+          .map((h) => {
+            const hLat = h.lat || h.center?.lat;
+            const hLon = h.lon || h.center?.lon;
+            if (!hLat || !hLon) return null;
+            return { ...h, lat: hLat, lon: hLon };
+          })
+          .filter(Boolean);
 
-  fetchWithFallback(query)
-    .then(async (data) => {
-      const rawHospitals = (data.elements || [])
-        .map((h) => {
-          const hLat = h.lat || h.center?.lat;
-          const hLon = h.lon || h.center?.lon;
-          if (!hLat || !hLon) return null;
-
+        async function getDrivingDistance(h) {
+          try {
+            const url = `https://router.project-osrm.org/route/v1/driving/${lon},${lat};${h.lon},${h.lat}?overview=false`;
+            const res = await fetch(url);
+            const json = await res.json();
+            if (json.routes?.length > 0) {
+              return {
+                ...h,
+                drivingDistance: json.routes[0].distance,
+                drivingDuration: json.routes[0].duration,
+              };
+            }
+          } catch (err) {
+            console.warn("OSRM routing failed:", err);
+          }
           return {
             ...h,
-            lat: hLat,
-            lon: hLon,
+            drivingDistance: getDistanceKm(lat, lon, h.lat, h.lon) * 1000,
+            drivingDuration: null,
           };
-        })
-        .filter(Boolean);
-
-      async function getDrivingDistance(h) {
-        try {
-          const url = `https://router.project-osrm.org/route/v1/driving/${lon},${lat};${h.lon},${h.lat}?overview=false`;
-          const res = await fetch(url);
-          const json = await res.json();
-
-          if (json.routes?.length > 0) {
-            return {
-              ...h,
-              drivingDistance: json.routes[0].distance,
-              drivingDuration: json.routes[0].duration,
-            };
-          }
-        } catch (err) {
-          console.warn("OSRM routing failed:", err);
         }
 
-        return {
-          ...h,
-          drivingDistance: getDistanceKm(lat, lon, h.lat, h.lon) * 1000,
-          drivingDuration: null,
-        };
-      }
+        const enriched = [];
+        for (const h of rawHospitals.slice(0, 20)) { // Limit to 20 for performance
+          const enrichedHospital = await getDrivingDistance(h);
+          await sleep(500);
+          const reverseData = await reverseGeocode(enrichedHospital.lat, enrichedHospital.lon);
+          enrichedHospital.address = reverseData?.displayName || "Address unavailable";
+          enrichedHospital.city = reverseData?.city || null;
+          enrichedHospital.name = inferName(enrichedHospital, reverseData);
+          enrichedHospital.department = inferDepartment(enrichedHospital);
+          enriched.push(enrichedHospital);
+        }
 
-      // ⭐ ENRICHMENT LOOP (with delay + reverse geocode + name)
-      const enriched = [];
+        const departmentsList = Array.from(new Set(enriched.map((h) => h.department)));
+        setDepartments(departmentsList);
+        enriched.sort((a, b) => a.drivingDistance - b.drivingDistance);
+        setHospitals(enriched);
+        setNearest(enriched[0] || null);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Overpass failed:", err);
+        setLoading(false);
+      });
+  }, [position]);
 
-      for (const h of rawHospitals) {
-        const enrichedHospital = await getDrivingDistance(h);
-
-        // ⭐ Respect Nominatim rate limit (1 request/sec)
-        await sleep(1100);
-
-        // ⭐ Reverse geocode
-        const reverseData = await reverseGeocode(
-          enrichedHospital.lat,
-          enrichedHospital.lon
-        );
-
-        // ⭐ Add address fields
-        enrichedHospital.address =
-          reverseData?.displayName || "Address unavailable";
-
-        enrichedHospital.city = reverseData?.city || null;
-        enrichedHospital.street = reverseData?.street || null;
-
-        // ⭐ Add name detection
-        enrichedHospital.name = inferName(enrichedHospital, reverseData);
-
-        // ⭐ Department inference
-        enrichedHospital.department = inferDepartment(enrichedHospital);
-
-        console.log("FINAL HOSPITAL:", enrichedHospital);
-
-        enriched.push(enrichedHospital);
-      }
-
-      // Extract unique departments
-      const departmentsList = Array.from(
-        new Set(enriched.map((h) => h.department))
-      );
-
-      setDepartments(departmentsList);
-
-      // Sort by distance
-      enriched.sort((a, b) => a.drivingDistance - b.drivingDistance);
-
-      setHospitals(enriched);
-      setNearest(enriched[0] || null);
-    })
-    .catch((err) => {
-      console.error("Overpass failed completely:", err);
-      alert("Unable to load hospitals right now. Please try again later.");
-    });
-}, [position]);
-
-  //filter logic for hospitals
-const filteredHospitals =
-  selectedDept === "All"
+  const filteredHospitals = selectedDept === "All"
     ? hospitals
     : hospitals.filter(h => h.department === selectedDept);
 
-  // -------------------------------
-  // 3. RENDER
-  // -------------------------------
-if (!position) return <p>Getting your location…</p>;
+  const handleViewDetails = (h) => {
+    setSelectedHospital(h);
+  };
 
-return (
-  <div>
-    {/* Department filter bar */}
-    <div className="sticky top-0 z-50 bg-white py-2 shadow-sm overflow-x-auto flex gap-2 mb-4">
-      {["All", ...departments].map((dept) => {
-        const style = departmentStyles[dept] || departmentStyles["General"];
-        const isActive = selectedDept === dept;
-    
-        return (
-          <button
-            key={dept}
-            onClick={() => setSelectedDept(dept)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-colors
-              ${isActive ? style.active : style.color}
-              active:opacity-70
-            `}
-          >
-            <span>{style.icon}</span>
-            <span>{dept}</span>
-          </button>
-        );
-      })}
-    </div>
+  const handleBookAppointment = (h) => {
+    navigate('/book', { state: { hospitalName: h.name, hospitalLat: h.lat, hospitalLon: h.lon } });
+  };
 
-    <div style={{ display: "flex", gap: "20px", marginTop: "20px" }}>
-      {/*hospital seletected render*/}
-          {selectedHospital && (
-      <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-        <div className="w-[90%] max-w-lg rounded-2xl shadow-lg overflow-hidden bg-white">
-          
-          <img
-            src={selectedHospital.image_url}
-            alt={selectedHospital.name}
-            className="w-full h-48 object-cover"
-          />
-    
-          <div className="p-4">
-            <button
-              onClick={() => setSelectedHospital(null)}
-              className="text-green-600 mb-2"
-            >
-              ← Back
-            </button>
-    
-            <h3 className="text-xl font-bold text-gray-800">
-              {selectedHospital.name}
-            </h3>
-    
-            <p className="flex items-center gap-2 mt-2 text-gray-600">
-              <MapPin size={16} /> {selectedHospital.address}
-            </p>
-    
-            <p className="flex items-center gap-2 mt-1 text-gray-600">
-              <Clock size={16} /> {selectedHospital.working_hours || "Hours unavailable"}
-            </p>
-    
-            <p className="flex items-center gap-2 mt-1 text-gray-600">
-              <Phone size={16} /> {selectedHospital.phone || "No phone available"}
-            </p>
-    
-            <div className="mt-4">
-              <p className="font-semibold mb-2 text-gray-800">Departments:</p>
-              <div className="flex flex-wrap gap-2">
-                {selectedHospital.departments?.map((d, i) => (
-                  <span
-                    key={i}
-                    className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm"
-                  >
-                    {d}
-                  </span>
-                ))}
-              </div>
-            </div>
-    
-            <button
-              onClick={() =>
-                window.open(
-                  `https://www.google.com/maps/dir/?api=1&destination=${selectedHospital.lat},${selectedHospital.lon}`,
-                  "_blank"
-                )
-              }
-              className="w-full mt-4 bg-green-600 text-white py-3 rounded-xl font-semibold"
-            >
-              Navigate
-            </button>
-          </div>
+  const handleNavigate = (h) => {
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${h.lat},${h.lon}`, "_blank");
+  };
+
+  if (!position) {
+    return (
+      <div className={`flex items-center justify-center h-64 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p>{language === 'fr' ? 'Obtention de votre position...' : 'Getting your location...'}</p>
         </div>
       </div>
-    )}
+    );
+  }
 
-      {/* LEFT: Map */}
-      <MapContainer
-        center={position}
-        zoom={14}
-        style={{
-          height: "450px",
-          width: "65%",
-          borderRadius: "12px"
-        }}
-      >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <Marker position={position} icon={UserIcon}>
-          <Popup>You are here</Popup>
-        </Marker>
+  return (
+    <div data-testid="hospital-map">
+      {/* View Mode Toggle */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex gap-2">
+          {["All", ...departments].map((dept) => {
+            const style = departmentStyles[dept] || departmentStyles["General"];
+            const isActive = selectedDept === dept;
+            return (
+              <button
+                key={dept}
+                onClick={() => setSelectedDept(dept)}
+                data-testid={`dept-${dept}-btn`}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors
+                  ${isActive ? style.active : style.color}`}
+              >
+                <span>{style.icon}</span>
+                <span className="hidden sm:inline">{dept}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex gap-1">
+          <button
+            onClick={() => setViewMode("list")}
+            className={`p-2 rounded-lg ${viewMode === "list" ? "bg-green-600 text-white" : darkMode ? "bg-gray-700 text-white" : "bg-gray-200"}`}
+          >
+            <List size={18} />
+          </button>
+          <button
+            onClick={() => setViewMode("split")}
+            className={`p-2 rounded-lg ${viewMode === "split" ? "bg-green-600 text-white" : darkMode ? "bg-gray-700 text-white" : "bg-gray-200"}`}
+          >
+            <MapIcon size={18} />
+          </button>
+        </div>
+      </div>
 
-        {filteredHospitals.map((h) => {
-          const isNearest = nearest && h.id === nearest.id;
-          return (
-            <Marker
-              key={h.id}
-              position={[h.lat, h.lon]}
-              icon={isNearest ? NearestHospitalIcon : HospitalIcon}
-            >
-              <Popup>
-                <strong>{h.name || "Hospital"}</strong>
-                <br />
-                Distance: {h.drivingDistance
-                  ? (h.drivingDistance / 1000).toFixed(2) + " km"
-                  : "Unknown"}
-                <br />
-                {h.drivingDuration
-                  ? `Drive time: ${(h.drivingDuration / 60).toFixed(0)} min`
-                  : ""}
-                <br />
-                {isNearest && <strong>⭐ Nearest hospital</strong>}
-                <br />
+      {/* Selected Hospital Modal */}
+      {selectedHospital && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={`w-full max-w-lg rounded-2xl shadow-xl overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <div className="bg-gradient-to-r from-green-600 to-green-700 p-4">
+              <button
+                onClick={() => setSelectedHospital(null)}
+                className="text-white/80 hover:text-white mb-2"
+              >
+                ← {language === 'fr' ? 'Retour' : 'Back'}
+              </button>
+              <h3 className="text-xl font-bold text-white">{selectedHospital.name}</h3>
+            </div>
+
+            <div className="p-4 space-y-3">
+              <p className={`flex items-center gap-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <MapPin size={16} className="text-green-600" /> {selectedHospital.address}
+              </p>
+              
+              {selectedHospital.drivingDistance && (
+                <p className={`flex items-center gap-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  <Clock size={16} className="text-green-600" />
+                  {(selectedHospital.drivingDistance / 1000).toFixed(1)} km
+                  {selectedHospital.drivingDuration && ` • ~${Math.round(selectedHospital.drivingDuration / 60)} min`}
+                </p>
+              )}
+
+              <div className="flex flex-wrap gap-2 mt-2">
+                <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
+                  {selectedHospital.department}
+                </span>
+              </div>
+
+              <div className="flex gap-3 mt-4">
                 <button
-                  onClick={() =>
-                    window.open(
-                      `https://www.google.com/maps/dir/?api=1&destination=${h.lat},${h.lon}`,
-                      "_blank"
-                    )
-                  }
-                  style={{
-                    marginTop: "6px",
-                    padding: "6px 10px",
-                    background: "#1a73e8",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: "pointer"
-                  }}
+                  onClick={() => handleBookAppointment(selectedHospital)}
+                  data-testid="modal-book-btn"
+                  className="flex-1 bg-green-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-green-700 transition"
                 >
-                  Navigate
+                  <Stethoscope size={18} />
+                  {language === 'fr' ? 'Réserver' : 'Book'}
                 </button>
-              </Popup>
+                <button
+                  onClick={() => handleNavigate(selectedHospital)}
+                  data-testid="modal-navigate-btn"
+                  className={`flex-1 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition ${
+                    darkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                  }`}
+                >
+                  <Navigation size={18} />
+                  {language === 'fr' ? 'Naviguer' : 'Navigate'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className={`flex gap-4 ${viewMode === "list" ? "flex-col" : ""}`}>
+        {/* Map */}
+        {viewMode !== "list" && (
+          <MapContainer
+            center={position}
+            zoom={13}
+            style={{
+              height: "400px",
+              width: viewMode === "split" ? "60%" : "100%",
+              borderRadius: "12px"
+            }}
+          >
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <Marker position={position} icon={UserIcon}>
+              <Popup>{language === 'fr' ? 'Vous êtes ici' : 'You are here'}</Popup>
             </Marker>
-          );
-        })}
-      </MapContainer>
 
-      {/* RIGHT: Hospital list */}
-      <div
-        style={{
-          width: "35%",
-          maxHeight: "450px",
-          overflowY: "auto",
-          padding: "10px",
-          borderRadius: "12px",
-          background: "#f8f9fa",
-          border: "1px solid #ddd"
-        }}
-      >
-        <h3 className="text-lg font-semibold mb-4">Hospitals near you</h3>
+            {filteredHospitals.map((h) => {
+              const isNearest = nearest && h.id === nearest.id;
+              return (
+                <Marker
+                  key={h.id}
+                  position={[h.lat, h.lon]}
+                  icon={isNearest ? NearestHospitalIcon : HospitalIcon}
+                >
+                  <Popup>
+                    <div className="min-w-[200px]">
+                      <strong>{h.name}</strong>
+                      <br />
+                      {h.drivingDistance && `${(h.drivingDistance / 1000).toFixed(1)} km`}
+                      {h.drivingDuration && ` • ${Math.round(h.drivingDuration / 60)} min`}
+                      <br />
+                      {isNearest && <span className="text-yellow-600 font-semibold">⭐ Plus proche</span>}
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => handleBookAppointment(h)}
+                          className="bg-green-600 text-white px-3 py-1 rounded text-sm"
+                        >
+                          {language === 'fr' ? 'Réserver' : 'Book'}
+                        </button>
+                        <button
+                          onClick={() => handleNavigate(h)}
+                          className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
+                        >
+                          {language === 'fr' ? 'Y aller' : 'Go'}
+                        </button>
+                      </div>
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
+          </MapContainer>
+        )}
 
-        <div className="space-y-3">
-          {filteredHospitals.map((h, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-800">
-                    {h.name || "Hospital"}
-                  </h4>
+        {/* Hospital List */}
+        <div
+          className={`${viewMode === "split" ? "w-[40%]" : "w-full"} max-h-[400px] overflow-y-auto space-y-3 ${
+            darkMode ? 'bg-gray-800' : 'bg-gray-50'
+          } rounded-xl p-3`}
+        >
+          <h3 className={`font-semibold sticky top-0 py-2 ${darkMode ? 'text-white bg-gray-800' : 'text-gray-800 bg-gray-50'}`}>
+            {language === 'fr' ? 'Hôpitaux à proximité' : 'Nearby Hospitals'} 
+            {loading && <span className="text-sm font-normal ml-2">({language === 'fr' ? 'Chargement...' : 'Loading...'})</span>}
+          </h3>
 
-                  <p className="text-xs text-gray-500">
-                    {h.address || "No address available"}
-                  </p>
+          {filteredHospitals.length === 0 && !loading && (
+            <p className={`text-center py-8 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              {language === 'fr' ? 'Aucun hôpital trouvé' : 'No hospitals found'}
+            </p>
+          )}
 
-                  <div className="flex items-center gap-3 mt-2 text-sm">
-                    <span className="flex items-center gap-1 text-gray-600">
-                      <span className="text-red-500">📍</span>
-                      {h.drivingDistance
-                        ? (h.drivingDistance / 1000).toFixed(2) + " km"
-                        : "Unknown"}
-                    </span>
-
-                    {h.drivingDuration && (
-                      <span className="flex items-center gap-1 text-gray-600">
-                        <span className="text-green-500">⏱</span>
-                        {(h.drivingDuration / 60).toFixed(0)} min
-                      </span>
-                    )}
+          {filteredHospitals.map((h, i) => {
+            const isNearest = nearest && h.id === nearest.id;
+            return (
+              <div
+                key={h.id || i}
+                className={`${darkMode ? 'bg-gray-700' : 'bg-white'} rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow ${
+                  isNearest ? 'ring-2 ring-yellow-500' : ''
+                }`}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                        {h.name}
+                      </h4>
+                      {isNearest && <span className="text-yellow-500 text-sm">⭐</span>}
+                    </div>
+                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} line-clamp-1`}>
+                      {h.address}
+                    </p>
                   </div>
                 </div>
 
-                <button
-                  onClick={() =>
-                    window.open(
-                      `https://www.google.com/maps/dir/?api=1&destination=${h.lat},${h.lon}`,
-                      "_blank"
-                    )
-                  }
-                  className="bg-red-100 text-red-600 p-3 rounded-full hover:bg-red-200 transition-colors"
-                >
-                  📞
-                </button>
-              </div>
+                <div className="flex items-center gap-3 mb-3 text-sm">
+                  <span className={`flex items-center gap-1 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <MapPin size={14} className="text-red-500" />
+                    {h.drivingDistance ? `${(h.drivingDistance / 1000).toFixed(1)} km` : "N/A"}
+                  </span>
+                  {h.drivingDuration && (
+                    <span className={`flex items-center gap-1 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      <Clock size={14} className="text-green-500" />
+                      {Math.round(h.drivingDuration / 60)} min
+                    </span>
+                  )}
+                </div>
 
-              <div className="flex gap-3 mt-3">
-              <button
-                onClick={() => setSelectedHospital(h)}
-                className="flex-1 bg-blue-100 text-blue-700 py-2 rounded-lg hover:bg-blue-200 transition-colors"
-              >
-                More details
-              </button>
-
-                <button
-                  onClick={() =>
-                    window.open(
-                      `https://www.google.com/maps/dir/?api=1&destination=${h.lat},${h.lon}`,
-                      "_blank"
-                    )
-                  }
-                  className="flex-1 bg-green-100 text-green-700 py-2 rounded-lg hover:bg-green-200 transition-colors"
-                >
-                  Navigate
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleViewDetails(h)}
+                    data-testid={`details-${i}-btn`}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                      darkMode ? 'bg-gray-600 text-white hover:bg-gray-500' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {language === 'fr' ? 'Détails' : 'Details'}
+                  </button>
+                  <button
+                    onClick={() => handleBookAppointment(h)}
+                    data-testid={`book-${i}-btn`}
+                    className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
+                  >
+                    {language === 'fr' ? 'Réserver' : 'Book'}
+                  </button>
+                  <button
+                    onClick={() => handleNavigate(h)}
+                    data-testid={`nav-${i}-btn`}
+                    className={`px-3 py-2 rounded-lg transition ${
+                      darkMode ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                    }`}
+                  >
+                    <Navigation size={16} />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
-  </div>
-);
+  );
 }
