@@ -1,4 +1,4 @@
-// Comprehensive health facilities database for Cameroon
+ // Comprehensive health facilities database for Cameroon
 // Priority cities: Yaoundé, Douala, Bafoussam
 
 export interface HealthFacility {
@@ -784,4 +784,4 @@ export const getFacilitiesByDistance = (lat: number, lon: number, facilities: He
       return { ...f, distance: d };
     })
     .sort((a, b) => a.distance - b.distance);
-};
+};                 
