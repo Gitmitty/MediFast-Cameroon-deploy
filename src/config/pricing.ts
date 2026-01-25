@@ -1,30 +1,33 @@
 // Centralized Pricing Configuration for MediFast Cameroon
 // All prices are in FCFA (Franc CFA)
-// This file is the SINGLE SOURCE OF TRUTH for all pricing in the app
+// MISE À JOUR: Tarifs réels Cameroun
 
 export const PRICING = {
-  // Base consultation fees
+  // Base consultation fees - TARIFS CORRIGÉS
   consultation: {
-    general: 5000,        // Médecine générale
-    specialist: 7000,     // Spécialiste (Cardiologue, Neurologue, etc.)
-    professor: 15000,     // Consultation avec Professeur
+    general: 600,         // Consultation Générale
+    specialist: 3000,     // Spécialiste (Cardiologue, Neurologue, etc.)
+    professor: 5000,      // Consultation avec Professeur
   },
 
   // Home visit (Visite à domicile)
   homeVisit: 10000,       // Flat fee for home visits
 
+  // ExpressCare (Priorité)
+  expressCare: 5000,      // Service prioritaire
+
   // Optional surcharges
   surcharges: {
-    night: 2000,          // Night calls (after 18h / before 7h)
-    holiday: 2000,        // Public holidays
-    weekend: 1500,        // Saturday/Sunday (optional)
+    night: 1000,          // Night calls (after 18h / before 7h)
+    holiday: 1000,        // Public holidays
+    weekend: 500,         // Saturday/Sunday
     expressCare: 5000,    // Priority queue service
   },
 
   // Emergency services
   emergency: {
-    consultation: 10000,  // Emergency room consultation
-    ambulance: 25000,     // Ambulance service (if implemented)
+    consultation: 5000,   // Emergency room consultation
+    ambulance: 25000,     // Ambulance service
   },
 };
 
@@ -45,6 +48,7 @@ export function getConsultationPrice(specialty: string): number {
     'Néphrologie', 'Nephrology',
     'Chirurgie', 'Surgery',
     'Oncologie', 'Oncology',
+    'Endocrinologie', 'Endocrinology',
   ];
 
   const professorTitles = ['Professeur', 'Professor', 'Prof.'];
@@ -98,8 +102,7 @@ export function calculateSurcharges(
   let total = 0;
   if (isNight) total += PRICING.surcharges.night;
   if (isHoliday) total += PRICING.surcharges.holiday;
-  // Note: Weekend surcharge is optional - uncomment if needed
-  // if (isWeekend && !isHoliday) total += PRICING.surcharges.weekend;
+  if (isWeekend && !isHoliday) total += PRICING.surcharges.weekend;
   
   return { night: isNight, holiday: isHoliday, weekend: isWeekend, total };
 }
@@ -113,6 +116,7 @@ export interface BookingPriceBreakdown {
   surcharges: {
     night: number;
     holiday: number;
+    weekend: number;
   };
   total: number;
 }
@@ -143,15 +147,17 @@ export function calculateBookingPrice(params: {
   // Surcharges based on date/time
   let nightSurcharge = 0;
   let holidaySurcharge = 0;
+  let weekendSurcharge = 0;
   
   if (date) {
     const surchargeCalc = calculateSurcharges(date, time);
     nightSurcharge = surchargeCalc.night ? PRICING.surcharges.night : 0;
     holidaySurcharge = surchargeCalc.holiday ? PRICING.surcharges.holiday : 0;
+    weekendSurcharge = surchargeCalc.weekend ? PRICING.surcharges.weekend : 0;
   }
   
   // Total
-  const total = basePrice + homeVisit + expressCare + nightSurcharge + holidaySurcharge;
+  const total = basePrice + homeVisit + expressCare + nightSurcharge + holidaySurcharge + weekendSurcharge;
   
   return {
     basePrice,
@@ -161,6 +167,7 @@ export function calculateBookingPrice(params: {
     surcharges: {
       night: nightSurcharge,
       holiday: holidaySurcharge,
+      weekend: weekendSurcharge,
     },
     total,
   };
@@ -181,6 +188,7 @@ export const priceLabels = {
     expressCare: 'ExpressCare (Priorité)',
     nightSurcharge: 'Supplément Nuit',
     holidaySurcharge: 'Supplément Jour Férié',
+    weekendSurcharge: 'Supplément Week-end',
     total: 'Total',
     currency: 'FCFA',
   },
@@ -192,6 +200,7 @@ export const priceLabels = {
     expressCare: 'ExpressCare (Priority)',
     nightSurcharge: 'Night Surcharge',
     holidaySurcharge: 'Holiday Surcharge',
+    weekendSurcharge: 'Weekend Surcharge',
     total: 'Total',
     currency: 'FCFA',
   },
