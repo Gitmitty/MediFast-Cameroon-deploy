@@ -22,7 +22,7 @@ export interface HealthFacility {
 // YAOUNDÉ - Health Facilities
 // ============================================
 
-const yaounde: HealthFacility[] = [
+export const yaounde: HealthFacility[] = [
   // Major Hospitals
   {
     id: 'hgy',
@@ -103,7 +103,6 @@ const yaounde: HealthFacility[] = [
     openingHours: '24h/24',
     isPublic: true
   },
-  // District Hospitals
   {
     id: 'hd-nkolndongo',
     name: 'Hôpital de District de Nkolndongo',
@@ -158,7 +157,6 @@ const yaounde: HealthFacility[] = [
     openingHours: '24h/24',
     isPublic: true
   },
-  // Private Clinics & Hospitals
   {
     id: 'bethesda',
     name: 'Hôpital Bethesda',
@@ -215,7 +213,6 @@ const yaounde: HealthFacility[] = [
     openingHours: '24h/24',
     isPublic: false
   },
-  // Health Centers
   {
     id: 'csm-melen',
     name: 'Centre de Santé de Mélen',
@@ -308,7 +305,6 @@ const yaounde: HealthFacility[] = [
     openingHours: '7h30-15h30',
     isPublic: true
   },
-  // Dispensaries
   {
     id: 'disp-emana',
     name: 'Dispensaire d\'Emana',
@@ -354,8 +350,7 @@ const yaounde: HealthFacility[] = [
 // DOUALA - Health Facilities
 // ============================================
 
-const douala: HealthFacility[] = [
-  // Major Hospitals
+export const douala: HealthFacility[] = [
   {
     id: 'hgd',
     name: 'Hôpital Général de Douala',
@@ -440,7 +435,6 @@ const douala: HealthFacility[] = [
     openingHours: '24h/24',
     isPublic: true
   },
-  // Private Clinics
   {
     id: 'clinique-cites',
     name: 'Clinique des Cités',
@@ -509,7 +503,6 @@ const douala: HealthFacility[] = [
     openingHours: '7h-18h',
     isPublic: false
   },
-  // Health Centers
   {
     id: 'csm-bonamoussadi',
     name: 'Centre de Santé de Bonamoussadi',
@@ -575,7 +568,6 @@ const douala: HealthFacility[] = [
     openingHours: '7h30-15h30',
     isPublic: true
   },
-  // Dispensaries
   {
     id: 'disp-bonapriso',
     name: 'Dispensaire de Bonapriso',
@@ -608,7 +600,7 @@ const douala: HealthFacility[] = [
 // BAFOUSSAM - Health Facilities
 // ============================================
 
-const bafoussam: HealthFacility[] = [
+export const bafoussam: HealthFacility[] = [
   {
     id: 'hrb',
     name: 'Hôpital Régional de Bafoussam',
@@ -693,11 +685,10 @@ const bafoussam: HealthFacility[] = [
 ];
 
 // ============================================
-// Other Major Cities (Brief)
+// Other Major Cities
 // ============================================
 
-const otherCities: HealthFacility[] = [
-  // Bamenda
+export const otherCities: HealthFacility[] = [
   {
     id: 'hrb-bamenda',
     name: 'Hôpital Régional de Bamenda',
@@ -711,7 +702,6 @@ const otherCities: HealthFacility[] = [
     openingHours: '24h/24',
     isPublic: true
   },
-  // Garoua
   {
     id: 'hrg-garoua',
     name: 'Hôpital Régional de Garoua',
@@ -724,7 +714,6 @@ const otherCities: HealthFacility[] = [
     openingHours: '24h/24',
     isPublic: true
   },
-  // Maroua
   {
     id: 'hrm-maroua',
     name: 'Hôpital Régional de Maroua',
@@ -737,7 +726,6 @@ const otherCities: HealthFacility[] = [
     openingHours: '24h/24',
     isPublic: true
   },
-  // Buea
   {
     id: 'hrb-buea',
     name: 'Hôpital Régional de Buea',
@@ -750,7 +738,6 @@ const otherCities: HealthFacility[] = [
     openingHours: '24h/24',
     isPublic: true
   },
-  // Kribi
   {
     id: 'hd-kribi',
     name: 'Hôpital de District de Kribi',
@@ -766,75 +753,12 @@ const otherCities: HealthFacility[] = [
 ];
 
 // ============================================
-// Export All Facilities
+// Export All Facilities (Fix for the build error)
 // ============================================
 
-export const allHealthFacilities: HealthFacility[] = [
+export const healthFacilities: HealthFacility[] = [
   ...yaounde,
   ...douala,
   ...bafoussam,
-  ...otherCities,
+  ...otherCities
 ];
-
-// Helper function to calculate distance using Haversine formula
-export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth's radius in km
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * (Math.PI / 180)) *
-    Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) ** 2;
-  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-}
-
-// Get facilities by city
-export function getFacilitiesByCity(city: string): HealthFacility[] {
-  return allHealthFacilities.filter(f => f.city.toLowerCase() === city.toLowerCase());
-}
-
-// Get facilities by type
-export function getFacilitiesByType(type: HealthFacility['type']): HealthFacility[] {
-  return allHealthFacilities.filter(f => f.type === type);
-}
-
-// Get facilities with emergency services
-export function getEmergencyFacilities(): HealthFacility[] {
-  return allHealthFacilities.filter(f => f.hasEmergency);
-}
-
-// Get facilities sorted by distance from user location
-export function getFacilitiesByDistance(
-  userLat: number, 
-  userLon: number, 
-  facilities?: HealthFacility[]
-): (HealthFacility & { distance: number; drivingTime: number })[] {
-  const facilityList = facilities || allHealthFacilities;
-  
-  return facilityList
-    .map(f => ({
-      ...f,
-      distance: calculateDistance(userLat, userLon, f.lat, f.lon),
-      drivingTime: Math.round((calculateDistance(userLat, userLon, f.lat, f.lon) / 30) * 60) // ~30 km/h average
-    }))
-    .sort((a, b) => a.distance - b.distance);
-}
-
-// Get facilities by department
-export function getFacilitiesByDepartment(department: string): HealthFacility[] {
-  return allHealthFacilities.filter(f => 
-    f.departments.some(d => d.toLowerCase().includes(department.toLowerCase()))
-  );
-}
-
-// Type labels for UI
-export const facilityTypeLabels = {
-  hospital: { en: 'Hospital', fr: 'Hôpital' },
-  clinic: { en: 'Clinic', fr: 'Clinique' },
-  dispensary: { en: 'Dispensary', fr: 'Dispensaire' },
-  health_center: { en: 'Health Center', fr: 'Centre de Santé' },
-  pharmacy: { en: 'Pharmacy', fr: 'Pharmacie' },
-};
-
-export default allHealthFacilities;
