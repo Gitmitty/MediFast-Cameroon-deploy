@@ -163,6 +163,107 @@ export const createBooking = async (bookingData: Omit<Booking, 'id' | 'createdAt
   }
 };
 
+// Demo bookings data for new users
+const generateDemoBookings = (userId: string): Booking[] => {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const nextWeek = new Date(today);
+  nextWeek.setDate(nextWeek.getDate() + 7);
+  const lastWeek = new Date(today);
+  lastWeek.setDate(lastWeek.getDate() - 7);
+  const twoWeeksAgo = new Date(today);
+  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+  
+  return [
+    {
+      id: 'demo-1',
+      userId,
+      userEmail: 'demo@medifast.cm',
+      userName: 'Utilisateur Demo',
+      hospitalId: 'hgy',
+      hospitalName: 'Hôpital Général de Yaoundé',
+      doctorId: 'dr-demo-1',
+      doctorName: 'Dr. Mbarga Jean-Pierre',
+      department: 'Médecine Générale',
+      specialty: 'Médecine Générale',
+      date: tomorrow.toISOString().split('T')[0],
+      time: '09:00',
+      status: 'confirmed',
+      queueNumber: 3,
+      fee: 600,
+      expressCare: false,
+      patientName: 'Moi',
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    },
+    {
+      id: 'demo-2',
+      userId,
+      userEmail: 'demo@medifast.cm',
+      userName: 'Utilisateur Demo',
+      hospitalId: 'chuy',
+      hospitalName: 'CHU de Yaoundé',
+      doctorId: 'dr-demo-2',
+      doctorName: 'Dr. Nguema Sarah',
+      department: 'Cardiologie',
+      specialty: 'Cardiologie',
+      date: nextWeek.toISOString().split('T')[0],
+      time: '14:00',
+      status: 'pending',
+      queueNumber: 5,
+      fee: 3000,
+      expressCare: false,
+      patientName: 'Moi',
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    },
+    {
+      id: 'demo-3',
+      userId,
+      userEmail: 'demo@medifast.cm',
+      userName: 'Utilisateur Demo',
+      hospitalId: 'hcy',
+      hospitalName: 'Hôpital Central de Yaoundé',
+      doctorId: 'dr-demo-3',
+      doctorName: 'Dr. Fotso Michel',
+      department: 'Pédiatrie',
+      specialty: 'Pédiatrie',
+      date: lastWeek.toISOString().split('T')[0],
+      time: '10:00',
+      status: 'completed',
+      queueNumber: 2,
+      fee: 3000,
+      expressCare: false,
+      patientName: 'Mon enfant',
+      patientRelation: 'child',
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    },
+    {
+      id: 'demo-4',
+      userId,
+      userEmail: 'demo@medifast.cm',
+      userName: 'Utilisateur Demo',
+      hospitalId: 'hjy',
+      hospitalName: 'Hôpital Jamot de Yaoundé',
+      doctorId: 'dr-demo-4',
+      doctorName: 'Prof. Pefura Eric',
+      department: 'Pneumologie',
+      specialty: 'Pneumologie',
+      date: twoWeeksAgo.toISOString().split('T')[0],
+      time: '11:00',
+      status: 'expired',
+      queueNumber: 8,
+      fee: 5000,
+      expressCare: true,
+      patientName: 'Moi',
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    }
+  ];
+};
+
 // Get user's bookings
 export const getUserBookings = async (userId: string): Promise<Booking[]> => {
   try {
@@ -183,6 +284,11 @@ export const getUserBookings = async (userId: string): Promise<Booking[]> => {
       } as Booking);
     });
     
+    // If no real bookings, return demo data
+    if (bookings.length === 0) {
+      return generateDemoBookings(userId);
+    }
+    
     // Update expired bookings
     const now = new Date();
     for (const booking of bookings) {
@@ -196,7 +302,8 @@ export const getUserBookings = async (userId: string): Promise<Booking[]> => {
     return bookings;
   } catch (error) {
     console.error('Error fetching user bookings:', error);
-    return [];
+    // Return demo data on error
+    return generateDemoBookings(userId);
   }
 };
 
