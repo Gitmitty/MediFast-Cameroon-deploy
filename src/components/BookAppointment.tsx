@@ -136,6 +136,13 @@ const BookAppointment: React.FC = () => {
   const location = useLocation();
   const { toast } = useToast();
   
+  // Get pre-selected data from SymptomChecker or hospital page
+  const preSelectedHospitalId = location.state?.hospitalId;
+  const preSelectedHospitalName = location.state?.hospitalName;
+  const preSelectedDepartment = location.state?.department;
+  const autoAssignDoctor = location.state?.autoAssignDoctor;
+  const fromSymptomChecker = location.state?.fromSymptomChecker;
+  
   const [step, setStep] = useState(1);
   const [consultationType, setConsultationType] = useState<'hospital' | 'home'>('hospital');
   const [selectedHospital, setSelectedHospital] = useState<typeof hospitals[0] | null>(null);
@@ -151,6 +158,49 @@ const BookAppointment: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [appointmentDetails, setAppointmentDetails] = useState<any>(null);
+  const [autoAssigned, setAutoAssigned] = useState(false);
+
+  // Auto-assign hospital and doctor when coming from SymptomChecker
+  useEffect(() => {
+    if (fromSymptomChecker && preSelectedHospitalId && !autoAssigned) {
+      // Find and select the hospital
+      const hospital = hospitals.find(h => h.id === preSelectedHospitalId) || 
+                       hospitals.find(h => h.name === preSelectedHospitalName);
+      
+      if (hospital) {
+        setSelectedHospital(hospital);
+        
+        // Auto-assign the best available doctor
+        if (autoAssignDoctor) {
+          const hospitalDoctors = doctorsByHospital[hospital.id] || [];
+          
+          // Find doctor matching department, or first available
+          let assignedDoctor = hospitalDoctors.find(d => 
+            d.specialty.toLowerCase() === preSelectedDepartment?.toLowerCase()
+          );
+          
+          // If no exact match, find a general practitioner or first available
+          if (!assignedDoctor) {
+            assignedDoctor = hospitalDoctors.find(d => d.consultationType === 'general') || 
+                            hospitalDoctors[0];
+          }
+          
+          if (assignedDoctor) {
+            setSelectedDoctor(assignedDoctor);
+            setStep(3); // Skip to date selection (step for 'self' booking)
+            setAutoAssigned(true);
+            
+            toast({
+              title: language === 'fr' ? '🩺 Médecin attribué' : '🩺 Doctor assigned',
+              description: language === 'fr' 
+                ? `${assignedDoctor.name} a été sélectionné pour vous` 
+                : `${assignedDoctor.name} has been selected for you`,
+            });
+          }
+        }
+      }
+    }
+  }, [fromSymptomChecker, preSelectedHospitalId, autoAssignDoctor, autoAssigned]);
 
   // Calculate surcharges based on selected date/time
   const surcharges = useMemo(() => {
