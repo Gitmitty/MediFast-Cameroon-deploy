@@ -23,7 +23,6 @@ export interface HealthFacility {
 // ============================================
 
 export const yaounde: HealthFacility[] = [
-  // Major Hospitals
   {
     id: 'hgy',
     name: 'Hôpital Général de Yaoundé',
@@ -753,12 +752,36 @@ export const otherCities: HealthFacility[] = [
 ];
 
 // ============================================
-// Export All Facilities (Fix for the build error)
+// CRITICAL EXPORTS FOR VERCEL BUILD
 // ============================================
 
-export const healthFacilities: HealthFacility[] = [
+// 1. All facilities list
+export const allHealthFacilities: HealthFacility[] = [
   ...yaounde,
   ...douala,
   ...bafoussam,
   ...otherCities
 ];
+
+// 2. Alias used by SymptomChecker.tsx
+export const healthFacilities = allHealthFacilities;
+
+// 3. Labels used by various components
+export const facilityTypeLabels: Record<HealthFacility['type'], string> = {
+  hospital: 'Hôpital',
+  clinic: 'Clinique',
+  dispensary: 'Dispensaire',
+  health_center: 'Centre de Santé',
+  pharmacy: 'Pharmacie'
+};
+
+// 4. Calculation function used by EmergencyPage.tsx
+export const getFacilitiesByDistance = (lat: number, lon: number, facilities: HealthFacility[]) => {
+  return [...facilities]
+    .map(f => {
+      // Simplified Haversine formula for performance
+      const d = Math.sqrt(Math.pow(f.lat - lat, 2) + Math.pow(f.lon - lon, 2)) * 111;
+      return { ...f, distance: d };
+    })
+    .sort((a, b) => a.distance - b.distance);
+};
